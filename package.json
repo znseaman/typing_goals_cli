@@ -1,0 +1,31 @@
+{
+  "name": "typing_goals_cli",
+  "version": "1.0.0",
+  "description": "A CLI tool to manage typing goals and track progress.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "initialize": "npm install && npm run build",
+    "build": "npx tsc",
+    "start": "node dist/main.js",
+    "dev": "npm run build && npm start",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/znseaman/typing_goals_cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/znseaman/typing_goals_cli/issues"
+  },
+  "homepage": "https://github.com/znseaman/typing_goals_cli#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}
