@@ -1,5 +1,7 @@
 import { exit } from "node:process";
 import { CLICommand, State } from "./state.js";
+import { commandHelp } from "./commands/help.js";
+import { commandExit } from "./commands/exit.js";
 
 export type Commands = Record<string, CLICommand>
 
@@ -8,22 +10,12 @@ export function getCommands(): Commands {
         "help": {
             name: "help",
             description: "List all available commands",
-            execute: async (state: State, args?: string[]) => {
-                console.log("\nAvailable commands:\n");
-                for (const commandName in state.commands) {
-                    const command = state.commands[commandName];
-                    console.log(`- ${command.name}: ${command.description}`);
-                }
-                console.log("");
-            }
+            execute: commandHelp,
         },
         "exit": {
             name: "exit",
             description: "Exit the CLI",
-            execute: async (state: State, args?: string[]) => {
-                console.log("\nGoodbye for now!\n");
-                exit(0);
-            }
+            execute: commandExit
         }
     }
 }
