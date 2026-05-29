@@ -34,6 +34,7 @@ Once you see a welcome message, you're all set!
 
 ## Coming Soon
 
-[] `login` command with MonkeyType (and `logout` 😅 )
+[X] `login` command with MonkeyType (and `logout` 😅 )
 [] `results` command to list all tests completed today on MonkeyType
 [] `goals` command to create, read, update, and delete daily goals
+[] `clear` command to wipe the text from the CLI

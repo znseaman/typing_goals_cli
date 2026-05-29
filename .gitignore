@@ -2,4 +2,10 @@ node_modules
 dist
 NOTES.md
 
+# ignore exit.test.ts until process.exit is mocked
+src/commands/exit.test.ts
+
+# ignore login.test.ts until "read", "monkeytype.login", and "setConfig" are mocked
+src/commands/login.test.ts
+
 .vscode

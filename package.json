@@ -27,5 +27,9 @@
     "@types/node": "^25.9.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "conf": "^15.1.0",
+    "read": "^5.0.1"
   }
 }
