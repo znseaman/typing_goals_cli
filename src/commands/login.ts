@@ -1,6 +1,6 @@
 
 import { initializeReadline, initializeReadlineHandlers, type State } from "../state.js";
-import { createRequestOptions, setConfig } from "../config.js";
+import { createRequestOptions, isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
 
 export interface LoginResponse {
@@ -16,6 +16,12 @@ export interface LoginResponse {
 }
 
 export async function commandLogin(state: State, args?: string[]): Promise<void> {
+  const hasValidToken = isTokenValid(state.config)
+  if (hasValidToken) {
+    console.log(`\nYou're already logged into your MonkeyType account\n`)
+    return
+  }
+
   console.log("\nLogin to your MonkeyType account\n")
 
   if (!args || !args.length) {
@@ -30,10 +36,14 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
   try {
     // @ts-ignore
     const password = await read({prompt: "Enter password: ", silent: true});
+    const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
 
     let response = await state.monkeytype.login(email, password)
     
     if (response) {
+      if (rememberMe.toLowerCase() !== "y") {
+        delete response.refreshToken
+      }
       setConfig(response || {}, state.config)
       console.log(`\n\nSuccessfully logged you in!\n`)
     }

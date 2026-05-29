@@ -30,8 +30,10 @@ export function isTokenValid(config: Conf) {
   return Date.now() < expiresIn
 }
 
-export function expireToken(config: Conf) {
+export function expireTokens(config: Conf) {
   config.delete('expiresIn')
+  config.delete('idToken')
+  config.delete('refreshToken')
 }
 
 export function createRequestOptions(

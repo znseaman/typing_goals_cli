@@ -4,6 +4,15 @@
 const MONKEYTYPE_SIGN_IN_BASE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY = "AIzaSyB5m_AnO575kvWriahcF1SFIWp8Fj3gQno"
 const MONKEYTYPE_API_BASE_URL = 'https://api.monkeytype.com'
+const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS = new URLSearchParams({
+  key: MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY,
+})
+
+// used for getting a new access token from refresh token
+const MONKEYTYPE_SECURE_TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1/token"
+const MONKEYTYPE_REFRESH_TOKEN_URL = `${
+  MONKEYTYPE_SECURE_TOKEN_BASE_URL
+}?${MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS.toString()}`
 
 export type MonkeyType = {
   login: Function,
@@ -34,10 +43,6 @@ export async function login(email: string, password: string): Promise<LoginRespo
     headers,
     method: "POST",
   }
-
-  const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS = new URLSearchParams({
-    key: MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY,
-  })
 
   return fetch(
     `${MONKEYTYPE_SIGN_IN_BASE_URL}?${MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS.toString()}`,
@@ -129,6 +134,49 @@ export async function getTags(requestOptions: RequestOptions) {
   } else {
     return response.json()
   }
+}
+
+export async function refreshToken(refreshToken: string): Promise<RefreshTokenResponse> {
+  const myHeaders = new Headers();
+  myHeaders.append("Referer", "https://monkeytype.com");
+  myHeaders.append(
+    "User-Agent",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  );
+  myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+
+  const urlencoded = new URLSearchParams();
+  urlencoded.append("grant_type", "refresh_token");
+  urlencoded.append("refresh_token", refreshToken);
+
+  const requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body: urlencoded,
+    redirect: "follow",
+  };
+
+  const response = await fetch(
+    MONKEYTYPE_REFRESH_TOKEN_URL,
+    requestOptions as RequestInit,
+  )
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
+export interface RefreshTokenResponse {
+  access_token: string
+  expires_in: string
+  token_type: string
+  refresh_token: string
+  id_token: string
+  user_id: string
+  project_id: string
 }
 
 export const monkeytype = {
