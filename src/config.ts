@@ -33,3 +33,19 @@ export function isTokenValid(config: Conf) {
 export function expireToken(config: Conf) {
   config.delete('expiresIn')
 }
+
+export function createRequestOptions(
+  config: Conf,
+  method: string,
+  authorization = 'bearerAuth',
+): {headers: Headers; method: string} {
+  const headers = new Headers()
+  const authorizationValue = authorization === 'bearerAuth' ? `Bearer ${config.get('idToken')}` : `ApeKey ${config.get('apiKey')}`
+
+  headers.append('Authorization', authorizationValue)
+
+  return {
+    headers,
+    method,
+  }
+}

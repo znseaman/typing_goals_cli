@@ -1,7 +1,7 @@
 import { stdin, stdout } from "node:process"
 import { createInterface, type Interface } from "node:readline"
 import { Commands, getCommands } from "./command.js";
-import { monkeytype } from "./monkeytype.js";
+import { MonkeyType, monkeytype } from "./monkeytype.js";
 import type Conf from "conf";
 import { config } from "./config.js";
 
@@ -14,7 +14,7 @@ export type CLICommand = {
 export type State = {
   readline: Interface
   commands: Commands,
-  monkeytype: any,
+  monkeytype: MonkeyType,
   config: Conf
 }
 

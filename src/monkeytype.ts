@@ -3,6 +3,13 @@
 // used for sign in with password
 const MONKEYTYPE_SIGN_IN_BASE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY = "AIzaSyB5m_AnO575kvWriahcF1SFIWp8Fj3gQno"
+const MONKEYTYPE_API_BASE_URL = 'https://api.monkeytype.com'
+
+export type MonkeyType = {
+  login: Function,
+  getPresets: Function,
+  getTags: Function,
+}
 
 export const headers = new Headers()
 headers.append("Referer", "https://monkeytype.com")
@@ -50,6 +57,82 @@ export interface LoginResponse {
   registered: boolean
 }
 
+export interface PresetsResponse {
+  data: Preset[]
+  message: string
+}
+
+export interface Preset {
+  _id: string
+  config: PresetConfig
+  name: string
+  settingGroups: unknown
+}
+
+export interface PresetConfig {
+  accountChart: string[]
+  alwaysShowWordsHistory?: boolean
+  blindMode?: boolean
+  burstHeatmap: boolean
+  confidenceMode?: string
+  customBackgroundFilter: number[]
+  customLayoutfluid: string[]
+  customPolyglot: string[]
+  customThemeColors: string[]
+  difficulty?: string
+  favThemes: unknown[]
+  fontSize: number
+  funbox: unknown[]
+  language?: string
+  liveAccStyle?: string
+  liveBurstStyle?: string
+  minAccCustom: number
+  mode?: string
+  numbers?: boolean
+  oppositeShiftMode?: string
+  playSoundOnError: string
+  punctuation?: boolean
+  quickEnd?: boolean
+  quickRestart: string
+  quoteLength: number[]
+  singleListCommandLine: string
+  strictSpace?: boolean
+  tags: string[]
+  theme: string
+  time?: number
+  timerStyle?: string
+  words: number
+}
+
+export interface RequestOptions {
+  headers: Headers,
+  method: string
+}
+
+export async function getPresets(requestOptions: RequestOptions): Promise<PresetsResponse> {
+  const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/presets`, requestOptions)
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
+export async function getTags(requestOptions: RequestOptions) {
+  const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/users/tags`, requestOptions)
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
 export const monkeytype = {
   login,
-}
+  getPresets,
+  getTags,
+} satisfies MonkeyType

@@ -1,6 +1,6 @@
 
 import { initializeReadline, initializeReadlineHandlers, type State } from "../state.js";
-import { setConfig } from "../config.js";
+import { createRequestOptions, setConfig } from "../config.js";
 import { read } from "read";
 
 export interface LoginResponse {
@@ -31,11 +31,29 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
     // @ts-ignore
     const password = await read({prompt: "Enter password: ", silent: true});
 
-    let response: LoginResponse | undefined = await state.monkeytype.login(email, password)
+    let response = await state.monkeytype.login(email, password)
     
     if (response) {
       setConfig(response || {}, state.config)
       console.log(`\n\nSuccessfully logged you in!\n`)
+    }
+
+    // TODO: fetch tags and presets and add both lists to config
+    const requestOptions = createRequestOptions(state.config, 'GET')
+    const presets = await state.monkeytype.getPresets(requestOptions)
+
+    if (presets) {
+      const data = {"presets": presets?.data}
+      setConfig(data, state.config)
+      console.log(`\n\nSuccessfully updated your presets!\n`)
+    }
+
+    const tags = await state.monkeytype.getTags(requestOptions)
+
+    if (tags) {
+      const data = {"tags": tags?.data}
+      setConfig(data, state.config)
+      console.log(`\n\nSuccessfully updated your tags!\n`)
     }
   } catch (error) {
     console.error(`\n\nEncountered an error: ${error}\n`)
