@@ -1,9 +1,10 @@
-import { CLICommand } from "./state.js";
-import { commandHelp } from "./commands/help.js";
-import { commandExit } from "./commands/exit.js";
-import { commandLogin } from "./commands/login.js";
-import { commandLogout } from "./commands/logout.js";
-import { commandConfig } from "./commands/config.js";
+import { CLICommand } from "./state.js"
+import { commandHelp } from "./commands/help.js"
+import { commandExit } from "./commands/exit.js"
+import { commandLogin } from "./commands/login.js"
+import { commandLogout } from "./commands/logout.js"
+import { commandConfig } from "./commands/config.js"
+import { commandResults } from "./commands/results.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -23,6 +24,11 @@ export function getCommands(): Commands {
       name: "logout",
       description: "Logout of your MonkeyType account",
       execute: commandLogout,
+    },
+    "results": {
+      name: "results",
+      description: "Get today's results from your MonkeyType account",
+      execute: commandResults,
     },
     "help": {
       name: "help",

@@ -179,6 +179,52 @@ export interface RefreshTokenResponse {
   project_id: string
 }
 
+export interface ResultsResponse {
+  data: ResultResponse[]
+  message: string
+}
+
+export interface ResultResponse {
+  _id: string
+  acc: number
+  charStats: number[]
+  consistency: number
+  difficulty: string
+  incompleteTestSeconds: number
+  keyConsistency: number
+  mode: string
+  mode2: string
+  numbers: boolean
+  punctuation: boolean
+  rawWpm: number
+  restartCount: number
+  tags: string[]
+  testDuration: number
+  timestamp: number
+  uid: string
+  wpm: number
+}
+
+export async function getResults(offset = 0, limit = 1000, requestOptions: {headers: Headers; method: string}, lastResultTimeStamp: number): Promise<ResultsResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    onOrAfterTimestamp: String(lastResultTimeStamp + 1), // on or after
+  })
+
+  const response = await fetch(
+    `${MONKEYTYPE_API_BASE_URL}/results?${params.toString()}`,
+    requestOptions,
+  )
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
 export const monkeytype = {
   login,
   getPresets,
