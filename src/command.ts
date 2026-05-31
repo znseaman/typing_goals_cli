@@ -5,6 +5,7 @@ import { commandLogin } from "./commands/login.js"
 import { commandLogout } from "./commands/logout.js"
 import { commandConfig } from "./commands/config.js"
 import { commandResults } from "./commands/results.js"
+import { commandGoals } from "./commands/goals.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -14,6 +15,11 @@ export function getCommands(): Commands {
       name: "config",
       description: "List the user configuration details",
       execute: commandConfig,
+    },
+    "goals": {
+      name: "goals",
+      description: "List the user configuration details",
+      execute: commandGoals,
     },
     "login": {
       name: "login",

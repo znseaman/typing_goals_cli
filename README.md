@@ -37,5 +37,5 @@ Once you see a welcome message, you're all set!
 [X] `login` command with MonkeyType (and `logout` 😅 )
 [X] Add 'Remember Me' feature to refresh tokens when they expire
 [X] `results` command to list all tests completed today on MonkeyType
-[] `goals` command to create, read, update, and delete daily goals
+[X] `goals` command to create, read, update, and delete daily goals
 [] `clear` command to wipe the text from the CLI

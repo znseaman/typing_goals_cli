@@ -99,3 +99,54 @@ export function printResultsTable(
 
   console.table(objects, Object.keys(objects[0]))
 }
+
+export async function getAllResults(state: State): Promise<ResultResponse[] | void>  {
+  // Bypass if under expires in
+  if (!isTokenValid(state.config)) {
+    // Try to refresh their token using refresh token
+    const token = String(state.config.get("refreshToken") || "")
+    if (!token) {
+      console.log(`\nType "login" to reconnect.\n`);
+      return
+    }
+
+    try {
+      const response = await refreshToken(token)
+      
+      const data = {
+        "idToken": response.id_token,
+        "expiresIn": response.expires_in,
+        "refreshToken": response.refresh_token,
+      }
+
+      setConfig(data, state.config)
+    } catch {
+      console.log(`\nType "login" to reconnect.\n`);
+      return
+    }
+  }
+
+  const startOfTodayUTC = Number(new Date(new Date().toISOString().split("T")[0]))
+
+  // get previous results from config for now
+  const previousResults = state.config.get("results") as ResultResponse[] || []
+  const onlyToday = previousResults.filter((result) => Number(result.timestamp) >= startOfTodayUTC)
+  
+  const lastResultTimeStamp = previousResults.at(-1)?.timestamp || startOfTodayUTC
+
+  let response
+  try {
+    const requestOptions = createRequestOptions(state.config, "GET")
+    response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error?.message, {code: JSON.stringify(error), exit: 1})
+    }
+  }
+
+  const allResults = [...onlyToday, ...(response?.data || [])]
+
+  setConfig({"results": allResults}, state.config)
+
+  return allResults
+}
