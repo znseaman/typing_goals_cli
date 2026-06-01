@@ -18,11 +18,21 @@ export function getCommands(): Commands {
     },
     "goals": {
       name: "goals",
-      description: "List the user configuration details",
+      usage: "goals [create|edit|delete]",
+      examples: [
+        "goals create",
+        "goals edit",
+        "goals delete",
+      ],
+      description: "List all user-created goals or create / edit / delete a goal",
       execute: commandGoals,
     },
     "login": {
       name: "login",
+      usage: "login <email>",
+      examples: [
+        "login bob@example.com",
+      ],
       description: "Login to your MonkeyType account",
       execute: commandLogin,
     },

@@ -7,6 +7,8 @@ import { config } from "./config.js";
 
 export type CLICommand = {
   name: string;
+  usage?: string;
+  examples?: string[];
   description: string;
   execute: (state: State, args?: string[]) => Promise<void>;
 }
