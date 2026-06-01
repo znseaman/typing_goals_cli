@@ -33,8 +33,8 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
   // get previous results from config for now
   const previousResults = state.config.get("results") as ResultResponse[] || []
   const onlyToday = previousResults.filter((result) => Number(result.timestamp) >= startOfTodayUTC)
-  
-  const lastResultTimeStamp = previousResults.at(-1)?.timestamp || startOfTodayUTC
+
+  const lastResultTimeStamp = onlyToday.at(0)?.timestamp || startOfTodayUTC
 
   let response
   try {
@@ -46,7 +46,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
     }
   }
 
-  const allResults = [...onlyToday, ...(response?.data || [])]
+  const allResults = [...(response?.data || []), ...onlyToday]
 
   setConfig({"results": allResults}, state.config)
 
