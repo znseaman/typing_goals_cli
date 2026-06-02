@@ -173,8 +173,6 @@ async function createGoal(state: State) {
     }
   }
 
-  console.log(`FOUND PRESET ID: ${presetId}`)
-
   if (!presetId) {
     console.log(`There is no preset that contains the tag "${tagName}" (_id: ${tagId}) associated with this account. Check your MonkeyType presets to verify the tag has been saved to a preset.`)
     return

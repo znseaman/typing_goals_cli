@@ -34,7 +34,6 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
   state.readline.close()
 
   try {
-    // @ts-ignore
     const password = await read({prompt: "Enter password: ", silent: true});
     const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
 
@@ -48,7 +47,6 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
       console.log(`\n\nSuccessfully logged you in!\n`)
     }
 
-    // TODO: fetch tags and presets and add both lists to config
     const requestOptions = createRequestOptions(state.config, 'GET')
     const presets = await state.monkeytype.getPresets(requestOptions)
 
