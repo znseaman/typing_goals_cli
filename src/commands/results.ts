@@ -80,6 +80,10 @@ export function printResultsTable(
   results: ResultResponse[],
   tagsObj: Record<string, {count: number; goal: number; name: string}>,
 ) {
+  if (!results.length) {
+    console.log(`No results to display yet! Take a test to see your results here.\n`)
+    return
+  }
 
   const objects = []
   for (let result of results) {

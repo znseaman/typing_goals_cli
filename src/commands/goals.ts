@@ -269,7 +269,7 @@ async function deleteGoal(state: State) {
     if (goal.name == oldGoal.name) {
       continue;
     }
-    allGoals.push(oldGoal)
+    allGoals.push(goal)
   }
 
   setConfig({"goals": allGoals}, state.config)
