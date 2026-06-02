@@ -77,23 +77,36 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       try {
         const allResults = await getAllResults(state)
+        const presets = state.config.get("presets") as Array<Record<string, any>> || []
+
         // get all the tags for this user
         const tags = state.config.get("tags") as Array<Record<string, any>> || []
-        const tagsObj = {} as Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string}>
+        const tagsObj = {} as Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string, goalTotalTests: number, presetOptions: Record<string, any>}>
         for (const tag of tags) {
           let associatedGoal = goals.find((goal) => goal.tagId == tag._id)
           if (associatedGoal) {
+            let associatedPreset = presets.find((preset) => preset._id == associatedGoal.presetId)
+            
             tagsObj[tag._id] = {
               count: 0,
               goal: associatedGoal ? associatedGoal.totalTests : 0,
               goalName: associatedGoal?.name,
               goalTimeFrame: associatedGoal?.timeframe,
+              goalTotalTests: associatedGoal?.totalTests,
               name: tag.name,
+              presetOptions: associatedPreset || {},
             }
           }
         }
 
-        printGoals(allResults as ResultResponse[], tagsObj)
+        for (const result of allResults as ResultResponse[]) {
+          const tagId = result.tags[0]
+          if (tagsObj[tagId]) {
+            tagsObj[tagId].count += 1
+          }
+        }
+
+        printGoalsTable(goals, tagsObj)
       } catch (error) {
         console.log(`An error occurred in listing goals: ${error}. Please try again.`)
       }
@@ -273,4 +286,50 @@ async function deleteGoal(state: State) {
   setConfig({"goals": allGoals}, state.config)
 
   console.log(`\nSuccessfully deleted the goal named "${oldGoal.name}"`)
+}
+
+export function printGoalsTable(
+  goals: Array<Record<string, any>>,
+  tagsObj: Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string, goalTotalTests: number, presetOptions: Record<string, any>}>,
+) {
+  const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
+  console.log(`\nToday's Goals (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
+
+  const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags"]
+
+  const objects = []
+  for (let goal of goals) {
+    let object = {
+      "met goal": tagsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+      name: goal.name,
+      "# of completed tests": tagsObj[goal.tagId]?.count || 0,
+      "# of tests to complete": goal.totalTests - tagsObj[goal.tagId]?.count > 0 ? goal.totalTests - tagsObj[goal.tagId]?.count : 0,
+      "preset name": tagsObj[goal.tagId]?.name,
+      "time frame": goal.timeframe,
+      "goal defining preset options": tagsObj[goal.tagId]?.presetOptions ? Object.entries(tagsObj[goal.tagId].presetOptions.config).reduce((acc, [key, value]) => {
+        if (bannedPresetOptions.includes(key)) return acc
+
+        // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
+        if ((key === "minWpm" || key === "minAcc") && value === "custom") {
+          return acc
+        }
+
+        // suppress when "words" is 0
+        if (key === "words" && value === 0) {
+          return acc
+        }
+
+        // suppress when "time" is 0
+        if (key === "time" && value === 0) {
+          return acc
+        }
+
+        acc.push(`${key}: ${value}`)
+        return acc
+      }, [] as string[]).join(`, `) : 'N/A',
+    }
+    objects.push(object)
+  }
+
+  console.table(objects, Object.keys(objects[0]))
 }
