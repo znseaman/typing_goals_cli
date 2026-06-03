@@ -47,6 +47,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       } catch (error) {
         console.log(`An error occurred in creating goal: ${error}. Please try again.`)
       } finally {
+        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+        state.stopFullExit = false
         // Re-create the previous readline and attach the necessary state to it
         state.readline = initializeReadline()
         initializeReadlineHandlers(state)
@@ -64,6 +66,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       } catch (error) {
         console.log(`An error occurred in editing goal: ${error}. Please try again.`)
       } finally {
+        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+        state.stopFullExit = false
         // Re-create the previous readline and attach the necessary state to it
         state.readline = initializeReadline()
         initializeReadlineHandlers(state)
@@ -81,6 +85,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       } catch (error) {
         console.log(`An error occurred in deleting goal: ${error}. Please try again.`)
       } finally {
+        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+        state.stopFullExit = false
         // Re-create the previous readline and attach the necessary state to it
         state.readline = initializeReadline()
         initializeReadlineHandlers(state)
