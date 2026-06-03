@@ -6,6 +6,7 @@ import { commandLogout } from "./commands/logout.js"
 import { commandConfig } from "./commands/config.js"
 import { commandResults } from "./commands/results.js"
 import { commandGoals } from "./commands/goals.js"
+import { commandPresets } from "./commands/presets.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -40,6 +41,11 @@ export function getCommands(): Commands {
       name: "logout",
       description: "Logout of your MonkeyType account",
       execute: commandLogout,
+    },
+    "presets": {
+      name: "presets",
+      description: "Get presets from your MonkeyType account",
+      execute: commandPresets,
     },
     "results": {
       name: "results",

@@ -3,7 +3,8 @@ import { setConfig } from "../config.js";
 import { initializeReadline, initializeReadlineHandlers, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { ResultResponse } from "../monkeytype.js";
+import { Preset, ResultResponse } from "../monkeytype.js";
+import { bannedPresetOptions } from "./presets.js";
 
 type Goal = {
   id: string
@@ -15,6 +16,19 @@ type Goal = {
   createdAt: number
   updatedAt: number
 }
+
+type GoalsObject = Record<string, {
+  count: number;
+  goal: number;
+  name: string,
+  goalName: string,
+  goalTimeFrame: string,
+  goalTotalTests: number,
+  failedAttempts: number,
+  pb: number,
+  pbTimestamp: number,
+  presetOptions: Record<string, any>
+}>
 
 export async function commandGoals(state: State, args?: string[]): Promise<void> {
   
@@ -44,7 +58,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       try {
         await editGoal(state)
       } catch (error) {
-        console.log(`An error occurred in creating goal: ${error}. Please try again.`)
+        console.log(`An error occurred in editing goal: ${error}. Please try again.`)
       } finally {
         // Re-create the previous readline and attach the necessary state to it
         state.readline = initializeReadline()
@@ -59,7 +73,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       try {
         await deleteGoal(state)
       } catch (error) {
-        console.log(`An error occurred in creating goal: ${error}. Please try again.`)
+        console.log(`An error occurred in deleting goal: ${error}. Please try again.`)
       } finally {
         // Re-create the previous readline and attach the necessary state to it
         state.readline = initializeReadline()
@@ -75,25 +89,37 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         return
       }
 
+      // sort names alphabetically
+      goals.sort((a: Goal, b: Goal) => a.name.localeCompare(b.name))
+
       try {
         const allResults = await getAllResults(state)
-        const presets = state.config.get("presets") as Array<Record<string, any>> || []
+        const presets = state.config.get("presets") as Array<Preset> || []
 
         // get all the tags for this user
         const tags = state.config.get("tags") as Array<Record<string, any>> || []
-        const tagsObj = {} as Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string, goalTotalTests: number, presetOptions: Record<string, any>}>
-        for (const tag of tags) {
-          let associatedGoal = goals.find((goal) => goal.tagId == tag._id)
-          if (associatedGoal) {
-            let associatedPreset = presets.find((preset) => preset._id == associatedGoal.presetId)
-            
-            tagsObj[tag._id] = {
+        const goalsObj = {} as GoalsObject
+        
+        for (const goal of goals) {
+          let associatedTag = tags.find((tag) => tag._id == goal.tagId)
+          let associatedPreset = presets.find((preset) => preset._id == goal.presetId)
+          if (associatedTag && associatedPreset) {
+            let mode: string = associatedPreset?.config?.mode || (associatedPreset?.config?.words !== 0 ? "words" : (associatedPreset?.config?.time !== 0 ? "time" : "unknown mode"))
+            let mode2: string = String(associatedPreset?.config?.words || associatedPreset?.config?.time || "")
+
+            let pb = (!mode || !mode2) ? "N/A" : associatedTag.personalBests[mode][mode2][0].wpm
+            let pbTimestamp = (!mode || !mode2) ? "N/A" : associatedTag.personalBests[mode][mode2][0].timestamp
+
+            goalsObj[associatedTag._id] = {
               count: 0,
-              goal: associatedGoal ? associatedGoal.totalTests : 0,
-              goalName: associatedGoal?.name,
-              goalTimeFrame: associatedGoal?.timeframe,
-              goalTotalTests: associatedGoal?.totalTests,
-              name: tag.name,
+              goal: goal ? goal.totalTests : 0,
+              goalName: goal?.name,
+              goalTimeFrame: goal?.timeframe,
+              goalTotalTests: goal?.totalTests,
+              name: associatedTag.name,
+              pb: pb,
+              pbTimestamp: pbTimestamp,
+              failedAttempts: 0,
               presetOptions: associatedPreset || {},
             }
           }
@@ -101,14 +127,16 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
         for (const result of allResults as ResultResponse[]) {
           const tagId = result.tags[0]
-          if (tagsObj[tagId]) {
-            tagsObj[tagId].count += 1
+          if (goalsObj[tagId]) {
+            goalsObj[tagId].count += 1
+            goalsObj[tagId].failedAttempts += (result?.restartCount || 0)
           }
         }
 
-        printGoalsTable(goals, tagsObj)
+        printGoalsTable(goals, goalsObj)
       } catch (error) {
-        console.log(`An error occurred in listing goals: ${error}. Please try again.`)
+        console.log(`An error occurred in listing goals. Please try again.`)
+        console.error((error as Error)?.stack, {code: JSON.stringify(error, null, 2)})
       }
       break;
   }
@@ -116,7 +144,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
 export function printGoals(
   results: ResultResponse[],
-  tagsObj: Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string}>,
+  goalsObj: GoalsObject,
 ) {
   let string = `\nTyping Goals By Name and Preset:\n`
 
@@ -124,8 +152,8 @@ export function printGoals(
 
   for (const result of results) {
     const tagId = result.tags[0]
-    if (tagsObj[tagId]) {
-      tagsObj[tagId].count += 1
+    if (goalsObj[tagId]) {
+      goalsObj[tagId].count += 1
     }
 
     totalSeconds += result.testDuration
@@ -136,15 +164,15 @@ export function printGoals(
 
   let goalsMet = 0
 
-  for (const [key] of Object.entries(tagsObj)) {
-    const metGoal = tagsObj[key].count >= tagsObj[key].goal
+  for (const [key] of Object.entries(goalsObj)) {
+    const metGoal = goalsObj[key].count >= goalsObj[key].goal
     if (metGoal) goalsMet++
     const metGoalIcon = metGoal ? `✅` : `❌`
-    const displayHowManyMore = metGoal ? `` : ` (Use preset "${tagsObj[key].name}" to complete ${tagsObj[key].goal - tagsObj[key].count} more)`
-    string += `${metGoalIcon} ${tagsObj[key].goalName}${displayHowManyMore}\n`
+    const displayHowManyMore = metGoal ? `` : ` (Use preset "${goalsObj[key].name}" to complete ${goalsObj[key].goal - goalsObj[key].count} more)`
+    string += `${metGoalIcon} ${goalsObj[key].goalName}${displayHowManyMore}\n`
   }
 
-  let goalsMetPercent = Math.round((goalsMet / Object.keys(tagsObj).length) * 100)
+  let goalsMetPercent = Math.round((goalsMet / Object.keys(goalsObj).length) * 100)
   let goalsMetText = goalsMetPercent == 100 ? '🎉 100% 🎉' : `${goalsMetPercent}%`
   string += `\nPercentage of Goals Met Today: ${goalsMetText}\n`
 
@@ -290,27 +318,31 @@ async function deleteGoal(state: State) {
 
 export function printGoalsTable(
   goals: Array<Record<string, any>>,
-  tagsObj: Record<string, {count: number; goal: number; name: string, goalName: string, goalTimeFrame: string, goalTotalTests: number, presetOptions: Record<string, any>}>,
+  goalsObj: GoalsObject,
 ) {
   const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
   console.log(`\nToday's Goals (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
 
-  const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags"]
-
   const objects = []
   for (let goal of goals) {
     let object = {
-      "met goal": tagsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+      "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
       name: goal.name,
-      "# of completed tests": tagsObj[goal.tagId]?.count || 0,
-      "# of tests to complete": goal.totalTests - tagsObj[goal.tagId]?.count > 0 ? goal.totalTests - tagsObj[goal.tagId]?.count : 0,
-      "preset name": tagsObj[goal.tagId]?.name,
-      "time frame": goal.timeframe,
-      "goal defining preset options": tagsObj[goal.tagId]?.presetOptions ? Object.entries(tagsObj[goal.tagId].presetOptions.config).reduce((acc, [key, value]) => {
+      "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
+      "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
+      "preset name": goalsObj[goal.tagId]?.name,
+      "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
+      "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
+      "goal defining preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
         if (bannedPresetOptions.includes(key)) return acc
 
         // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
         if ((key === "minWpm" || key === "minAcc") && value === "custom") {
+          return acc
+        }
+
+        // hide minBurstCustomSpeed and minBurst when minBurst is off
+        if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId].presetOptions.config.minBurst === "off") {
           return acc
         }
 
