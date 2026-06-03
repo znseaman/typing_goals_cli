@@ -82,6 +82,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       break;
     default:
+      const [isVerbose] = args
+      const verbose = isVerbose === "-v" ? true : false
+
       // list current goals
       const goals = state.config.get("goals") as Array<Goal> || []
       if (goals.length === 0) {
@@ -133,7 +136,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
           }
         }
 
-        printGoalsTable(goals, goalsObj)
+        printGoalsTable(goals, goalsObj, verbose)
       } catch (error) {
         console.log(`An error occurred in listing goals. Please try again.`)
         console.error((error as Error)?.stack, {code: JSON.stringify(error, null, 2)})
@@ -317,48 +320,62 @@ async function deleteGoal(state: State) {
 }
 
 export function printGoalsTable(
-  goals: Array<Record<string, any>>,
+  goals: Array<Goal>,
   goalsObj: GoalsObject,
+  verbose?: boolean
 ) {
   const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
   console.log(`\nToday's Goals (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
 
   const objects = []
   for (let goal of goals) {
-    let object = {
-      "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
-      name: goal.name,
-      "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
-      "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
-      "preset name": goalsObj[goal.tagId]?.name,
-      "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
-      "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
-      "goal defining preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
-        if (bannedPresetOptions.includes(key)) return acc
+    let object = {}
+    if (verbose) {
+      object = {
+        "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+        name: goal.name,
+        "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
+        "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
+        "preset name": goalsObj[goal.tagId]?.name,
+        "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
+        "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
+        "goal defining preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
+          if (bannedPresetOptions.includes(key)) return acc
 
-        // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
-        if ((key === "minWpm" || key === "minAcc") && value === "custom") {
+          // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
+          if ((key === "minWpm" || key === "minAcc") && value === "custom") {
+            return acc
+          }
+
+          // hide minBurstCustomSpeed and minBurst when minBurst is off
+          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId].presetOptions.config.minBurst === "off") {
+            return acc
+          }
+
+          // suppress when "words" is 0
+          if (key === "words" && value === 0) {
+            return acc
+          }
+
+          // suppress when "time" is 0
+          if (key === "time" && value === 0) {
+            return acc
+          }
+
+          acc.push(`${key}: ${value}`)
           return acc
-        }
-
-        // hide minBurstCustomSpeed and minBurst when minBurst is off
-        if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId].presetOptions.config.minBurst === "off") {
-          return acc
-        }
-
-        // suppress when "words" is 0
-        if (key === "words" && value === 0) {
-          return acc
-        }
-
-        // suppress when "time" is 0
-        if (key === "time" && value === 0) {
-          return acc
-        }
-
-        acc.push(`${key}: ${value}`)
-        return acc
-      }, [] as string[]).join(`, `) : 'N/A',
+        }, [] as string[]).join(`, `) : 'N/A',
+      }
+    } else {
+      object = {
+          "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+          name: goal.name,
+          "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
+          "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
+          "preset name": goalsObj[goal.tagId]?.name,
+          "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
+          "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
+      }
     }
     objects.push(object)
   }

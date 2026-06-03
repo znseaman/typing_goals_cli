@@ -19,8 +19,10 @@ export function getCommands(): Commands {
     },
     "goals": {
       name: "goals",
-      usage: "goals [create|edit|delete]",
+      usage: "goals [-v|create|edit|delete]",
       examples: [
+        "goals",
+        "goals -v #verbose",
         "goals create",
         "goals edit",
         "goals delete",
