@@ -47,7 +47,9 @@ async function promptLogin(state: State): Promise<boolean> {
   try {
     await state.commands["login"].execute(state)
   } catch (error) {
-    console.error(`Error executing command "login":`, error);
+    if ((error as Error).message !== "canceled") {
+      console.log(`An error occurred: ${error}. Please try again.`)
+    }
   } finally {
     return true
   }
