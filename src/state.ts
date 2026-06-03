@@ -57,5 +57,8 @@ export function initializeReadlineHandlers(state: State): void {
     }
 
     state.readline.prompt();
+  }).on("close", async () => {
+    console.log(``)
+    await state.commands["exit"].execute(state)
   })
 }
