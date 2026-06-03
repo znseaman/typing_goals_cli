@@ -1,5 +1,5 @@
 
-import { initializeReadline, initializeReadlineHandlers, type State } from "../state.js";
+import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { createRequestOptions, isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
 
@@ -24,12 +24,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
 
   console.log("\nLet's connect your MonkeyType account to the CLI!\n")
 
-  // Workaround to prevent natural readline from fully exiting the readline interface on close
-  state.stopFullExit = true
-  // Close down the previous readline to make way for enquirer's readline
-  state.readline.close()
-
-  try {
+  const handler = async () => {
     let email: string
     if (!args || !args.length) {
       // TODO: get their default if it exists in config
@@ -72,13 +67,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
       setConfig(data, state.config)
       console.log(`\nSuccessfully updated your tags!\n`)
     }
-  } catch (error) {
-    console.error(`\nEncountered an error: ${error}\n`)
-  } finally {
-    // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
-    state.stopFullExit = false
-    // Re-create the previous readline and attach the necessary state to it
-    state.readline = initializeReadline()
-    initializeReadlineHandlers(state)
   }
+
+  await removeReadline_runNonReadline_addReadline(state, handler)
 }

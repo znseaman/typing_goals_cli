@@ -65,3 +65,26 @@ export function initializeReadlineHandlers(state: State): void {
     await state.commands["exit"].execute(state)
   })
 }
+
+// A control mechanism given only one readline can exist
+// This solves for wanting to use another "readline"-like package but Node.js having limitations with readline
+export async function removeReadline_runNonReadline_addReadline(state: State, handler: () => Promise<void>) {
+  // Workaround to prevent natural readline from fully exiting the readline interface on close
+  state.stopFullExit = true
+  // Close down the previous readline to make way for enquirer's readline
+  state.readline.close()
+  
+  try {
+    await handler()
+  } catch (error) {
+    if ((error as Error).message !== "canceled") {
+      console.log(`An error occurred: ${error}. Please try again.`)
+    }
+  } finally {
+    // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+    state.stopFullExit = false
+    // Re-create the previous readline and attach the necessary state to it
+    state.readline = initializeReadline()
+    initializeReadlineHandlers(state)
+  }
+}

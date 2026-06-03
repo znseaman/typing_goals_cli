@@ -1,6 +1,6 @@
 
 import { setConfig } from "../config.js";
-import { initializeReadline, initializeReadlineHandlers, type State } from "../state.js";
+import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
 import { Preset, ResultResponse } from "../monkeytype.js";
@@ -37,61 +37,13 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
   switch (crudType) {
     case "create":
-      // Workaround to prevent natural readline from fully exiting the readline interface on close
-      state.stopFullExit = true
-      // Close down the previous readline to make way for enquirer's readline
-      state.readline.close()
-
-      try {
-        await createGoal(state)
-      } catch (error) {
-        console.log(`An error occurred in creating goal: ${error}. Please try again.`)
-      } finally {
-        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
-        state.stopFullExit = false
-        // Re-create the previous readline and attach the necessary state to it
-        state.readline = initializeReadline()
-        initializeReadlineHandlers(state)
-      }
-
+      await removeReadline_runNonReadline_addReadline(state, () => createGoal(state))
       break;
     case "edit":
-      // Workaround to prevent natural readline from fully exiting the readline interface on close
-      state.stopFullExit = true
-      // Close down the previous readline to make way for enquirer's readline
-      state.readline.close()
-
-      try {
-        await editGoal(state)
-      } catch (error) {
-        console.log(`An error occurred in editing goal: ${error}. Please try again.`)
-      } finally {
-        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
-        state.stopFullExit = false
-        // Re-create the previous readline and attach the necessary state to it
-        state.readline = initializeReadline()
-        initializeReadlineHandlers(state)
-      }
-
+      await removeReadline_runNonReadline_addReadline(state, () => editGoal(state))
       break;
     case "delete":
-      // Workaround to prevent natural readline from fully exiting the readline interface on close
-      state.stopFullExit = true
-      // Close down the previous readline to make way for enquirer's readline
-      state.readline.close()
-
-      try {
-        await deleteGoal(state)
-      } catch (error) {
-        console.log(`An error occurred in deleting goal: ${error}. Please try again.`)
-      } finally {
-        // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
-        state.stopFullExit = false
-        // Re-create the previous readline and attach the necessary state to it
-        state.readline = initializeReadline()
-        initializeReadlineHandlers(state)
-      }
-
+      await removeReadline_runNonReadline_addReadline(state, () => deleteGoal(state))
       break;
     default:
       const [isVerbose] = args
@@ -259,7 +211,7 @@ async function createGoal(state: State) {
     const samePresetId = goal.presetId == oldGoal.presetId
     const sameTagId = goal.tagId && oldGoal.tagId
     if (samePresetId && sameTagId) {
-      console.log(`Unable to create goal due to conflict with existing goal using tagName ${oldGoal.id}). Only one goal can exist per tag / preset combination.`)
+      console.log(`Unable to create goal due to conflict with existing goal using tagName ${oldGoal.id}. Only one goal can exist per tag / preset combination.`)
       return
     }
   }
