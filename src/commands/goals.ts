@@ -37,6 +37,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
   switch (crudType) {
     case "create":
+      // Workaround to prevent natural readline from fully exiting the readline interface on close
+      state.stopFullExit = true
       // Close down the previous readline to make way for enquirer's readline
       state.readline.close()
 
@@ -52,6 +54,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       break;
     case "edit":
+      // Workaround to prevent natural readline from fully exiting the readline interface on close
+      state.stopFullExit = true
       // Close down the previous readline to make way for enquirer's readline
       state.readline.close()
 
@@ -67,6 +71,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       break;
     case "delete":
+      // Workaround to prevent natural readline from fully exiting the readline interface on close
+      state.stopFullExit = true
       // Close down the previous readline to make way for enquirer's readline
       state.readline.close()
 
