@@ -4,14 +4,15 @@ import { refreshToken } from "./monkeytype.js";
 
 export async function startREPL(state: State) {
   const hasValidToken = isTokenValid(state.config)
-  const displayName = state.config.get('displayName')
+  const displayName = state.config.get("displayName")
+  let promptedLogin = false
   if (hasValidToken) {
     console.log(`\nWelcome back, ${displayName}!\n`);
   } else if (displayName) {
     // Try to refresh their token
-    const token = String(state.config.get('refreshToken') || "")
+    const token = String(state.config.get("refreshToken") || "")
     if (!token) {
-      console.log(`\nWelcome back, ${displayName}! Type "login" to reconnect.\n`);
+      promptedLogin = await promptLogin(state)
     } else {
       try {
         const response = await refreshToken(token)
@@ -23,18 +24,31 @@ export async function startREPL(state: State) {
         }
 
         setConfig(data, state.config)
-
+        console.log(`\nWelcome back, ${displayName}!\n`)
       } catch {
-        console.log(`\nWelcome back, ${displayName}! Type "login" to reconnect.\n`);
+        promptedLogin = await promptLogin(state)
       }
     }
   } else {
-    console.log(`\nWelcome to the Typing Goals CLI! Type "login" to connect.\n`);
-  }
+    console.log(`\nWelcome to the Typing Goals CLI!\n`);
 
-  console.log("Type 'help' to see the available commands.\n");
+    promptedLogin = await promptLogin(state)
+  }
 
   state.readline.prompt();
 
-  initializeReadlineHandlers(state);
+  // The login command already calls this function internally due to switching between native readline and read package
+  if (!promptedLogin) {
+    initializeReadlineHandlers(state);
+  }
+}
+
+async function promptLogin(state: State): Promise<boolean> {
+  try {
+    await state.commands["login"].execute(state)
+  } catch (error) {
+    console.error(`Error executing command "login":`, error);
+  } finally {
+    return true
+  }
 }
