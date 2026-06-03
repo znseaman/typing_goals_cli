@@ -32,7 +32,7 @@ export function getCommands(): Commands {
     },
     "login": {
       name: "login",
-      usage: "login <email>",
+      usage: "login [<email>]",
       examples: [
         "login bob@example.com",
       ],

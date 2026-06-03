@@ -17,7 +17,8 @@ export type State = {
   readline: Interface
   commands: Commands,
   monkeytype: MonkeyType,
-  config: Conf
+  config: Conf,
+  stopFullExit: boolean,
 }
 
 export function initializeState(): State {
@@ -29,7 +30,8 @@ export function initializeState(): State {
     readline,
     commands,
     monkeytype,
-    config
+    config,
+    stopFullExit: false
   }
 }
 
@@ -58,6 +60,7 @@ export function initializeReadlineHandlers(state: State): void {
 
     state.readline.prompt();
   }).on("close", async () => {
+    if (state.stopFullExit) return
     console.log(``)
     await state.commands["exit"].execute(state)
   })

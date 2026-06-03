@@ -24,16 +24,25 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
 
   console.log("\nLogin to your MonkeyType account\n")
 
-  if (!args || !args.length) {
-    throw new Error(`Usage: login <email>`)
-  }
-
-  const [email] = args
-
+  // Workaround to prevent natural readline from fully exiting the readline interface on close
+  state.stopFullExit = true
   // Close down the previous readline to make way for enquirer's readline
   state.readline.close()
 
   try {
+    let email: string
+    if (!args || !args.length) {
+      // TODO: get their default if it exists in config
+      const defaultEmail = String(state.config.get("email"))
+      const options = {
+        prompt: "Enter email: ",
+        silent: false,
+        ...(defaultEmail && { default: defaultEmail }), 
+      }
+      email = await read(options)
+    } else {
+      [email] = args
+    }
     const password = await read({prompt: "Enter password: ", silent: true});
     const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
 
@@ -66,6 +75,8 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
   } catch (error) {
     console.error(`\n\nEncountered an error: ${error}\n`)
   } finally {
+    // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+    state.stopFullExit = false
     // Re-create the previous readline and attach the necessary state to it
     state.readline = initializeReadline()
     initializeReadlineHandlers(state)
