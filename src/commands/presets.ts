@@ -16,7 +16,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
       const data = {"presets": presets?.data}
       setConfig(data, state.config)
 
-      console.log(`Successfully updated your presets!\n`)
+      console.log(`We've successfully updated your presets!\n`)
 
       let string = `Your Presets:\n`
       for (let preset of presets.data) {
