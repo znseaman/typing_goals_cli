@@ -162,7 +162,7 @@ export async function refreshToken(refreshToken: string): Promise<RefreshTokenRe
   )
   if (response.status >= 400) {
     throw new Error(
-      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+      `${response.status} - ${response.statusText}`,
     )
   } else {
     return response.json()

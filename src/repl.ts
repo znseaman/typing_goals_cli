@@ -11,25 +11,25 @@ export async function startREPL(state: State) {
     // Try to refresh their token
     const token = String(state.config.get('refreshToken') || "")
     if (!token) {
-      console.log(`\nWelcome back, ${displayName}! Type 'login' to reconnect.\n`);
-    }
+      console.log(`\nWelcome back, ${displayName}! Type "login" to reconnect.\n`);
+    } else {
+      try {
+        const response = await refreshToken(token)
+        
+        const data = {
+          "idToken": response.id_token,
+          "expiresIn": response.expires_in,
+          "refreshToken": response.refresh_token,
+        }
 
-    try {
-      const response = await refreshToken(token)
-      
-      const data = {
-        "idToken": response.id_token,
-        "expiresIn": response.expires_in,
-        "refreshToken": response.refresh_token,
+        setConfig(data, state.config)
+
+      } catch {
+        console.log(`\nWelcome back, ${displayName}! Type "login" to reconnect.\n`);
       }
-
-      setConfig(data, state.config)
-
-    } catch {
-      console.log(`\nWelcome back, ${displayName}! Type 'login' to reconnect.\n`);
     }
   } else {
-    console.log(`\nWelcome to the Typing Goals CLI! Type 'login' to connect.\n`);
+    console.log(`\nWelcome to the Typing Goals CLI! Type "login" to connect.\n`);
   }
 
   console.log("Type 'help' to see the available commands.\n");
