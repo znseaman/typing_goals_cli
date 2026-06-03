@@ -125,7 +125,7 @@ export async function getPresets(requestOptions: RequestOptions): Promise<Preset
   }
 }
 
-export async function getTags(requestOptions: RequestOptions) {
+export async function getTags(requestOptions: RequestOptions): Promise<{data: Tag[]; message: string}> {
   const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/users/tags`, requestOptions)
   if (response.status >= 400) {
     throw new Error(
@@ -224,6 +224,45 @@ export async function getResults(offset = 0, limit = 1000, requestOptions: {head
     return response.json()
   }
 }
+
+export interface Tag {
+  _id: string
+  name: string
+  personalBests: PersonalBests
+}
+
+export interface PersonalBests {
+  time: Time
+  words: Words
+  quote: Quote
+  zen: Zen
+  custom: Custom
+}
+
+export interface Time {}
+
+export interface Words {
+  "25": W25[]
+}
+
+export interface W25 {
+  acc: number
+  consistency: number
+  difficulty: string
+  lazyMode: boolean
+  language: string
+  punctuation: boolean
+  raw: number
+  wpm: number
+  numbers: boolean
+  timestamp: number
+}
+
+export interface Quote {}
+
+export interface Zen {}
+
+export interface Custom {}
 
 export const monkeytype = {
   login,
