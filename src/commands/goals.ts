@@ -3,7 +3,7 @@ import { setConfig } from "../config.js";
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { Preset, ResultResponse } from "../monkeytype.js";
+import { emojiForPresetConfigOption, Preset, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
 
 type Goal = {
@@ -295,19 +295,32 @@ export function printGoalsTable(
   for (let goal of goals) {
     let object = {}
     if (verbose) {
+      let mode = goalsObj[goal.tagId]?.presetOptions?.config?.mode
+      let modeNumber = goalsObj[goal.tagId]?.presetOptions?.config[mode]
       object = {
         "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
         name: goal.name,
         "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
-        "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
+        "❌ failed": goalsObj[goal.tagId]?.failedAttempts || 0,
         "preset name": goalsObj[goal.tagId]?.name,
-        "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
+        "🏆 pb": goalsObj[goal.tagId]?.pb || 'N/A',
         "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
-        "goal defining preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
+        [`${emojiForPresetConfigOption["language"]}`]: `${goalsObj[goal.tagId]?.presetOptions?.config?.language}`,
+        "mode": `${mode} ${modeNumber}`,
+        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minWpmCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["minAccCustom"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minAccCustom || 0,
+        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minBurstCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["blindMode"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.blindMode || false,
+        "extra preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
           if (bannedPresetOptions.includes(key)) return acc
 
+          // suppress as they have their own columns now
+          if (key === "language" || key === "mode" || key === mode || key === "minWpmCustomSpeed" || key === "minAccCustom" || key === "minBurstCustomSpeed" || key === "blindMode") {
+            return acc
+          }
+
           // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
-          if ((key === "minWpm" || key === "minAcc") && value === "custom") {
+          if ((key === "minWpm" || key === "minAcc") && (value === "custom" || value === "off")) {
             return acc
           }
 
@@ -326,7 +339,15 @@ export function printGoalsTable(
             return acc
           }
 
-          acc.push(`${key}: ${value}`)
+          // suppress when "difficulty" is "normal"
+          if (key === "difficulty" && value === "normal") return acc
+
+          // suppress when "oppositeShiftMode" or "confidenceMode" is "off"
+          if ((key === "oppositeShiftMode" || key === "confidenceMode") && value === "off") return acc
+
+          const emoji: string = key == "difficulty" ? emojiForPresetConfigOption[key][value as string] || "" : emojiForPresetConfigOption[key] || ""
+          const suppressValue = (key == "blindMode" || key == "confidenceMode" || key == "oppositeShiftMode")
+          acc.push(`${emoji ? emoji : `${key}:`}${suppressValue ? "" : ` ${value}`}`)
           return acc
         }, [] as string[]).join(`, `) : 'N/A',
       }

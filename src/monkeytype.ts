@@ -75,38 +75,114 @@ export interface Preset {
 }
 
 export interface PresetConfig {
-  accountChart: string[]
-  alwaysShowWordsHistory?: boolean
-  blindMode?: boolean
-  burstHeatmap: boolean
-  confidenceMode?: string
-  customBackgroundFilter: number[]
-  customLayoutfluid: string[]
-  customPolyglot: string[]
-  customThemeColors: string[]
-  difficulty?: string
-  favThemes: unknown[]
-  fontSize: number
-  funbox: unknown[]
+  punctuation?: boolean
+  numbers?: boolean
+  words?: number
+  time?: number
+  mode?: string
+  quoteLength?: number[]
   language?: string
+  burstHeatmap?: boolean
+  difficulty?: string
+  quickRestart?: string
+  repeatQuotes?: string
+  resultSaving?: boolean
+  blindMode?: boolean
+  alwaysShowWordsHistory?: boolean
+  singleListCommandLine?: string
+  minWpm?: string
+  minWpmCustomSpeed?: number
+  minAcc?: string
+  minAccCustom?: number
+  minBurst?: string
+  minBurstCustomSpeed?: number
+  britishEnglish?: boolean
+  funbox?: any[]
+  customLayoutfluid?: string[]
+  customPolyglot?: string[]
+  freedomMode?: boolean
+  strictSpace?: boolean
+  oppositeShiftMode?: string
+  stopOnError?: string
+  confidenceMode?: string
+  quickEnd?: boolean
+  indicateTypos?: string
+  compositionDisplay?: string
+  hideExtraLetters?: boolean
+  lazyMode?: boolean
+  layout?: string
+  codeUnindentOnBackspace?: boolean
+  soundVolume?: number
+  playSoundOnClick?: string
+  playSoundOnError?: string
+  playTimeWarning?: string
+  smoothCaret?: string
+  caretStyle?: string
+  paceCaret?: string
+  paceCaretCustomSpeed?: number
+  paceCaretStyle?: string
+  repeatedPace?: boolean
+  timerStyle?: string
+  liveSpeedStyle?: string
   liveAccStyle?: string
   liveBurstStyle?: string
-  minAccCustom: number
-  mode?: string
-  numbers?: boolean
-  oppositeShiftMode?: string
-  playSoundOnError: string
-  punctuation?: boolean
-  quickEnd?: boolean
-  quickRestart: string
-  quoteLength: number[]
-  singleListCommandLine: string
-  strictSpace?: boolean
-  tags: string[]
-  theme: string
-  time?: number
-  timerStyle?: string
-  words: number
+  timerColor?: string
+  timerOpacity?: string
+  highlightMode?: string
+  typedEffect?: string
+  tapeMode?: string
+  tapeMargin?: number
+  smoothLineScroll?: boolean
+  showAllLines?: boolean
+  alwaysShowDecimalPlaces?: boolean
+  typingSpeedUnit?: string
+  startGraphsAtZero?: boolean
+  maxLineWidth?: number
+  fontSize?: number
+  fontFamily?: string
+  keymapMode?: string
+  keymapLayout?: string
+  keymapStyle?: string
+  keymapLegendStyle?: string
+  keymapShowTopRow?: string
+  keymapSize?: number
+  flipTestColors?: boolean
+  colorfulMode?: boolean
+  customBackground?: string
+  customBackgroundSize?: string
+  customBackgroundFilter?: number[]
+  autoSwitchTheme?: boolean
+  themeLight?: string
+  themeDark?: string
+  randomTheme?: string
+  favThemes?: any[]
+  theme?: string
+  customTheme?: boolean
+  customThemeColors?: string[]
+  showKeyTips?: boolean
+  showOutOfFocusWarning?: boolean
+  capsLockWarning?: boolean
+  showAverage?: string
+  showPb?: boolean
+  accountChart?: string[]
+  monkey?: boolean
+  monkeyPowerLevel?: string
+  ads?: string
+  tags?: string[]
+}
+
+export const emojiForPresetConfigOption: Record<string, any> = {
+  blindMode: `🙈 blind`,
+  confidenceMode: `⌫ confidence`,
+  oppositeShiftMode: `⇆ opposite shift`,
+  minAccCustom: `💣 min % acc`,
+  minBurstCustomSpeed: `💣 min wpm burst`,
+  minWpmCustomSpeed: `💣 min wpm`,
+  difficulty: {
+    master: `⭐`,
+    expert: `✨`,
+  },
+  language: `🌎 lang`
 }
 
 export interface RequestOptions {
