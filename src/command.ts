@@ -14,10 +14,12 @@ export function getCommands(): Commands {
   return {
     "config": {
       name: "config",
-      usage: "config [get] [<field>]",
+      usage: "config [get|set|delete] [<field>] [<value>]",
       examples: [
         "config",
         "config get presets",
+        "config set dbURL postgres://username:password@localhost:5432/typing_goals_cli",
+        "config delete expiresIn"
       ],
       description: "List the user configuration details",
       execute: commandConfig,

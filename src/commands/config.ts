@@ -3,7 +3,7 @@ import type { State } from "../state.js";
 
 export async function commandConfig(state: State, args?: string[]): Promise<void> {
   if (args && args.length) {
-    const [command, field] = args
+    const [command, field, ...value] = args
     if (!field) {
       console.error(`Usage: config ${command} <field>`)
       return
@@ -16,6 +16,21 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
           return
         }
         console.log(`${JSON.stringify(result, null, 2)}`)
+        return
+      case "set":
+        const parsedValue = parseStringValue(value.join(""))
+        try {
+          state.config.set(field, parsedValue)
+        } catch (error) {
+          console.error(`Unable to set value to field "${field}": ${error}`)
+        }
+        return
+      case "delete":
+        try {
+          state.config.delete(field)
+        } catch (error) {
+          console.error(`Unable to delete field "${field}": ${error}`)
+        }
         return
       default:
         console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
@@ -39,4 +54,29 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
 
   console.log(`\nPath: (${state.config.path}):`)
   console.log(`\nUser Config: ${JSON.stringify(json, null, 2)}`)
+}
+
+function parseStringValue(value: string) {
+  const trimmed = value.trim();
+
+  // boolean and null strings
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (trimmed === "null") return null;
+  if (trimmed === "undefined") return undefined;
+
+  // numbers (including decimals)
+  if (trimmed !== "" && !isNaN(Number(trimmed))) {
+    return Number(trimmed);
+  }
+
+  // JSON objects and arrays
+  try {
+    return JSON.parse(trimmed);
+  } catch (e) {
+    // Fail silently to fall through to a plain string
+  }
+
+  // string
+  return value;
 }
