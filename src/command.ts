@@ -14,6 +14,11 @@ export function getCommands(): Commands {
   return {
     "config": {
       name: "config",
+      usage: "config [get] [<field>]",
+      examples: [
+        "config",
+        "config get presets",
+      ],
       description: "List the user configuration details",
       execute: commandConfig,
     },
