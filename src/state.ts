@@ -4,6 +4,10 @@ import { Commands, getCommands } from "./command.js";
 import { MonkeyType, monkeytype } from "./monkeytype.js";
 import type Conf from "conf";
 import { config } from "./config.js";
+import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { initializeDB } from "./db/index.js"
+import { Pool } from "pg";
+import 'dotenv/config'
 
 export type CLICommand = {
   name: string;
@@ -14,19 +18,30 @@ export type CLICommand = {
 }
 
 export type State = {
-  readline: Interface
+  db: NodePgDatabase<typeof import("./db/schema.js")> & {
+    $client: Pool;
+  },
+  readline: Interface,
   commands: Commands,
   monkeytype: MonkeyType,
   config: Conf,
   stopFullExit: boolean,
 }
 
-export function initializeState(): State {
+export async function initializeState(): Promise<State> {
+  const isProd = isProduction()
+  if (isProd) {
+    console.debug = function(){}
+  }
+
+  const db = await initializeDB(config)
+
   const readline = initializeReadline()
 
   const commands: Commands = getCommands();
 
   return {
+    db,
     readline,
     commands,
     monkeytype,
@@ -87,4 +102,8 @@ export async function removeReadline_runNonReadline_addReadline(state: State, ha
     state.readline = initializeReadline()
     initializeReadlineHandlers(state)
   }
+}
+
+export function isProduction(): boolean {
+  return !process.env?.ENVIRONMENT ? true : process.env?.ENVIRONMENT == "prod" ? true : false
 }

@@ -2,6 +2,8 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { createRequestOptions, isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
+import { createUser, getUserById } from "../db/queries/users.js";
+import { createPreset, getPresetById } from "../db/queries/presets.js";
 
 export interface LoginResponse {
   displayName: string
@@ -45,19 +47,42 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
     
     if (response) {
       if (rememberMe.toLowerCase() !== "y") {
+        // @ts-ignore
         delete response.refreshToken
       }
       setConfig(response || {}, state.config)
       console.log(`\nWe've successfully connected your MonkeyType account!\n`)
+
+      // save user to db
+      const userId = await getUserById(state, response.localId)
+      if (!userId) {
+        const user = await createUser(state, response.localId, response.email, response.displayName)
+        if (user) {
+          console.debug(`db:createUser - ${user.id}`)
+        }
+      }
     }
 
     const requestOptions = createRequestOptions(state.config, 'GET')
     const presets = await state.monkeytype.getPresets(requestOptions)
 
     if (presets) {
-      const data = {"presets": presets?.data}
-      setConfig(data, state.config)
-      console.log(`\nWe've successfully updated your presets!\n`)
+      // save presets to db
+      for await (const preset of presets?.data) {
+        try {
+          const exists = await getPresetById(state, preset._id)
+          if (exists) continue
+
+          const saved = await createPreset(state, preset._id, preset.name, JSON.stringify(preset, null, 0), String(state.config.get("localId")))
+          if (saved) {
+            console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            console.error(error?.message, { code: JSON.stringify(error) })
+          }
+        }
+      }
     }
 
     const tags = await state.monkeytype.getTags(requestOptions)

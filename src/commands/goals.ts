@@ -3,8 +3,9 @@ import { setConfig } from "../config.js";
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { emojiForPresetConfigOption, Preset, ResultResponse } from "../monkeytype.js";
+import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
+import { getPresetsByUserId, Preset } from "../db/queries/presets.js";
 
 type Goal = {
   id: string
@@ -61,7 +62,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       try {
         const allResults = await getAllResults(state)
-        const presets = state.config.get("presets") as Array<Preset> || []
+        const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
+        // @ts-ignore
+        const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => JSON.parse(rawPreset?.fullDetails))
 
         // get all the tags for this user
         const tags = state.config.get("tags") as Array<Record<string, any>> || []
@@ -172,11 +175,13 @@ async function createGoal(state: State) {
     return
   }
 
-  const presets = state.config.get("presets") as Array<Record<string, any>> || []
+  const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
+  // @ts-ignore
+  const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
 
   let presetId
   for (const preset of presets) {
-    if (preset.config.tags.includes(tagId)) {
+    if (preset?.config?.tags?.includes(tagId)) {
       presetId = preset._id
     }
   }

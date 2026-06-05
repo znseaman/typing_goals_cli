@@ -1,6 +1,7 @@
 import Conf from 'conf'
 
 export interface Config {
+  dbURL?: string
   displayName?: string
   email?: string
   expiresIn?: string

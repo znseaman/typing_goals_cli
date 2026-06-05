@@ -15,9 +15,9 @@ const MONKEYTYPE_REFRESH_TOKEN_URL = `${
 }?${MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS.toString()}`
 
 export type MonkeyType = {
-  login: Function,
-  getPresets: Function,
-  getTags: Function,
+  login: (email: string, password: string) => Promise<LoginResponse>,
+  getPresets: (requestOptions: RequestOptions) => Promise<PresetsResponse>,
+  getTags: (requestOptions: RequestOptions) => Promise<{data: Tag[]; message: string}>,
 }
 
 export const headers = new Headers()
@@ -63,11 +63,11 @@ export interface LoginResponse {
 }
 
 export interface PresetsResponse {
-  data: Preset[]
+  data: PresetResponse[]
   message: string
 }
 
-export interface Preset {
+export interface PresetResponse {
   _id: string
   config: PresetConfig
   name: string

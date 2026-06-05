@@ -1,6 +1,7 @@
 import type { State } from "../state.js"
-import { createRequestOptions, setConfig } from "../config.js"
-import { Preset } from "../monkeytype.js"
+import { createRequestOptions } from "../config.js"
+import { PresetResponse } from "../monkeytype.js"
+import { createPreset, getPresetById } from "../db/queries/presets.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
@@ -10,13 +11,25 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
     const presets = await state.monkeytype.getPresets(requestOptions)
 
     if (presets) {
+      // save presets to db
+      for await (const preset of presets?.data) {
+        try {
+          const exists = await getPresetById(state, preset._id)
+          if (exists) continue
+
+          const saved = await createPreset(state, preset._id, preset.name, JSON.stringify(preset, null, 0), String(state.config.get("localId")))
+          if (saved) {
+            console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            console.error(error?.message, { code: JSON.stringify(error) })
+          }
+        }
+      }
+
       // sort names alphabetically
-      presets.data.sort((a: Preset, b: Preset) => a.name.localeCompare(b.name))
-
-      const data = {"presets": presets?.data}
-      setConfig(data, state.config)
-
-      console.log(`We've successfully updated your presets!\n`)
+      presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
 
       let string = `Your Presets:\n`
       for (let preset of presets.data) {

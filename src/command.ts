@@ -7,11 +7,22 @@ import { commandConfig } from "./commands/config.js"
 import { commandResults } from "./commands/results.js"
 import { commandGoals } from "./commands/goals.js"
 import { commandPresets } from "./commands/presets.js"
+import { commandDb } from "./commands/db.js"
 
 export type Commands = Record<string, CLICommand>
 
 export function getCommands(): Commands {
   return {
+    "db": {
+      name: "db",
+      usage: "db <sql_query>",
+      description: "Test SQL queries against your database",
+      examples: [
+        "db select version()",
+        "db select now()",
+      ],
+      execute: commandDb,
+    },
     "config": {
       name: "config",
       usage: "config [get|set|delete|path] [<field>] [<value>]",

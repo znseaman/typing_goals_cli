@@ -29,8 +29,8 @@ export const State = vi.fn(
 );
 
 describe("initializeState", () => {
-  test("should return State object", () => {
-    const state = initializeState();
+  test("should return State object", async () => {
+    const state = await initializeState();
     expect(state.readline).toBeTruthy();
 
     const commands = Object.keys(state.commands);
