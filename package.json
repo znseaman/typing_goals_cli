@@ -13,7 +13,8 @@
     "test:watch": "vitest watch",
     "db_schema_changes": "npm run generate && npm run migrate",
     "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "psql": "docker exec -it d4c371b46301 psql -U postgres"
   },
   "repository": {
     "type": "git",
