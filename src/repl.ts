@@ -1,18 +1,20 @@
-import { isTokenValid, setConfig, createRequestOptions } from "./config.js";
+import { isTokenValid, setConfig } from "./config.js";
 import { initializeReadlineHandlers, type State } from "./state.js";
 import { refreshToken } from "./monkeytype.js";
 
 export async function startREPL(state: State) {
+  let wasPromptedBeforeInitialization = false
   const hasValidToken = isTokenValid(state.config)
   const displayName = state.config.get("displayName")
-  let promptedLogin = false
+  const loginHandler = () => state.commands["login"].execute(state)
+
   if (hasValidToken) {
     console.log(`\nWelcome back, ${displayName}!\n`);
   } else if (displayName) {
     // Try to refresh their token
     const token = String(state.config.get("refreshToken") || "")
     if (!token) {
-      promptedLogin = await promptLogin(state)
+      wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
     } else {
       try {
         const response = await refreshToken(token)
@@ -26,26 +28,26 @@ export async function startREPL(state: State) {
         setConfig(data, state.config)
         console.log(`\nWelcome back, ${displayName}!\n`)
       } catch {
-        promptedLogin = await promptLogin(state)
+        wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
       }
     }
   } else {
     console.log(`\nWelcome to the Typing Goals CLI!\n`);
 
-    promptedLogin = await promptLogin(state)
+    wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
   }
 
   state.readline.prompt();
 
   // The login command already calls this function internally due to switching between native readline and read package
-  if (!promptedLogin) {
+  if (!wasPromptedBeforeInitialization) {
     initializeReadlineHandlers(state);
   }
 }
 
-async function promptLogin(state: State): Promise<boolean> {
+async function promptBeforeInitialization(handler: () => Promise<void>): Promise<boolean> {
   try {
-    await state.commands["login"].execute(state)
+    await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
       console.log(`An error occurred: ${error}. Please try again.`)
