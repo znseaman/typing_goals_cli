@@ -15,6 +15,13 @@
       "when": 1780621260044,
       "tag": "0001_true_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780628650121,
+      "tag": "0002_silky_oracle",
+      "breakpoints": true
     }
   ]
 }

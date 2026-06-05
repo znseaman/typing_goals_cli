@@ -73,7 +73,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
           const exists = await getPresetById(state, preset._id)
           if (exists) continue
 
-          const saved = await createPreset(state, preset._id, preset.name, JSON.stringify(preset, null, 0), String(state.config.get("localId")))
+          const saved = await createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
           if (saved) {
             console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
           }

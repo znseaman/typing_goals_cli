@@ -1,0 +1,1 @@
+ALTER TABLE "presets" ALTER COLUMN "full_details" SET DATA TYPE json;

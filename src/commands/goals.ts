@@ -64,7 +64,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         const allResults = await getAllResults(state)
         const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
         // @ts-ignore
-        const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => JSON.parse(rawPreset?.fullDetails))
+        const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
 
         // get all the tags for this user
         const tags = state.config.get("tags") as Array<Record<string, any>> || []

@@ -13,7 +13,7 @@ export const users = pgTable('users', {
 
 export const presets = pgTable('presets', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  fullDetails: text('full_details'),
+  fullDetails: json('full_details'),
   id: text('id').primaryKey().notNull(),
   name: text('name').notNull().unique(),
   updatedAt: timestamp('updated_at')
