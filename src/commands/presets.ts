@@ -1,11 +1,27 @@
 import type { State } from "../state.js"
 import { createRequestOptions } from "../config.js"
 import { PresetResponse } from "../monkeytype.js"
-import { createPreset, getPresetById } from "../db/queries/presets.js"
+import { createPreset, deletePresets, getPresetById } from "../db/queries/presets.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
 export async function commandPresets(state: State, args?: string[]): Promise<void> {
+  if (args && args.length) {
+    const [command] = args
+    switch (command) {
+      case "delete":
+        try {
+          await deletePresets(state, String(state.config.get("localId")))
+        } catch (error) {
+          console.error(`Unable to delete presets: ${error}`)
+        }
+        return
+      default:
+        console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
+        return
+    }
+  }
+
   const requestOptions = createRequestOptions(state.config, 'GET')
   try {
     const presets = await state.monkeytype.getPresets(requestOptions)
@@ -17,7 +33,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
           const exists = await getPresetById(state, preset._id)
           if (exists) continue
 
-          const saved = await createPreset(state, preset._id, preset.name, JSON.stringify(preset, null, 0), String(state.config.get("localId")))
+          const saved = await createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
           if (saved) {
             console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
           }
