@@ -51,3 +51,24 @@ export const results = pgTable('results', {
     .references(() => users.id, {onDelete: 'cascade'})
     .notNull(),
 })
+
+export const goals = pgTable('goals', {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  name: text('name').notNull(),
+  tagId: text('tag_id')
+    .references(() => tags.id, {onDelete: 'cascade'})
+    .notNull(),
+  presetId: text('preset_id')
+    .references(() => presets.id, {onDelete: 'cascade'})
+    .notNull(),
+  timeframe: text('timeframe').notNull(),
+  totalTests: integer('total_tests').notNull(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+  userId: text('user_id')
+    .references(() => users.id, {onDelete: 'cascade'})
+    .notNull()
+})

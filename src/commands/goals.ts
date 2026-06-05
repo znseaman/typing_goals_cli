@@ -1,23 +1,11 @@
-
-import { setConfig } from "../config.js";
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { emojiForPresetConfigOption, PresetResponse, ResultResponse, TagResponse } from "../monkeytype.js";
+import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
 import { getPresetsByUserId, Preset } from "../db/queries/presets.js";
 import { getTagsByUserId, Tag } from "../db/queries/tags.js";
-
-type Goal = {
-  id: string
-  presetId: string
-  name: string
-  tagId: string
-  timeframe: string
-  totalTests: number
-  createdAt: number
-  updatedAt: number
-}
+import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
 
 type GoalsObject = Record<string, {
   count: number;
@@ -39,7 +27,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
   switch (crudType) {
     case "create":
-      await removeReadline_runNonReadline_addReadline(state, () => createGoal(state))
+      await removeReadline_runNonReadline_addReadline(state, () => create(state))
       break;
     case "edit":
       await removeReadline_runNonReadline_addReadline(state, () => editGoal(state))
@@ -52,14 +40,10 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       const verbose = isVerbose === "-v" ? true : false
 
       // list current goals
-      const goals = state.config.get("goals") as Array<Goal> || []
-      if (goals.length === 0) {
-        console.log(`\nNo goals created yet. Type "goals create" to create your first goal\n`)
-        return
-      }
+      const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
 
       // sort names alphabetically
-      goals.sort((a: Goal, b: Goal) => a.name.localeCompare(b.name))
+      goals.sort((a: GoalWithPresetAndTag, b: GoalWithPresetAndTag) => a.name.localeCompare(b.name))
 
       try {
         const allResults = await getAllResults(state)
@@ -73,7 +57,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         const goalsObj = {} as GoalsObject
         
         for (const goal of goals) {
-          let associatedTag = tags.find((tag) => tag._id == goal.tagId)
+          let associatedTag = tags.find((tag) => tag._id == goal.tagId as string)
           let associatedPreset = presets.find((preset) => preset._id == goal.presetId)
           if (associatedTag && associatedPreset) {
             let mode: string = associatedPreset?.config?.mode || (associatedPreset?.config?.words !== 0 ? "words" : (associatedPreset?.config?.time !== 0 ? "time" : "unknown mode"))
@@ -155,7 +139,7 @@ export function printGoals(
   console.log(string)
 }
 
-async function createGoal(state: State) {
+async function create(state: State) {
   console.log(`Create your goal by following the prompt below:`)
 
   const name = await read({prompt: "Enter daily goal name: "});
@@ -200,34 +184,13 @@ async function createGoal(state: State) {
     return
   }
 
-  const now = Date.now()
-  
-  const goal: Goal = {
-    id: tagName,
-    presetId,
-    name,
-    tagId,
-    timeframe: timeframe,
-    totalTests: Number(totalTests),
-    createdAt: now,
-    updatedAt: now,
+  let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
+  if (existingGoal) {
+    console.log("Goal already exists")
+    return
   }
 
-  const currentGoals = state.config.get("goals") as Array<Record<string, any>> || []
-
-  // verify the goal created doesn't conflict with an existing goal that uses the same presetId and tagId
-  for (let oldGoal of currentGoals) {
-    const samePresetId = goal.presetId == oldGoal.presetId
-    const sameTagId = goal.tagId && oldGoal.tagId
-    if (samePresetId && sameTagId) {
-      console.log(`Unable to create goal due to conflict with existing goal using tagName ${oldGoal.id}. Only one goal can exist per tag / preset combination.`)
-      return
-    }
-  }
-
-  const allGoals = [...currentGoals, goal]
-
-  setConfig({"goals": allGoals}, state.config)
+  const goal = await createGoal(state, name, tagId, presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
 
   console.log(`\nSuccessfully created a new goal named "${goal.name}"`)
 }
@@ -237,10 +200,8 @@ async function editGoal(state: State) {
 
   const name = await read({prompt: "Enter the daily goal name to edit: "});
   const totalTests = await read({prompt: "Enter new number of tests to meet goal: "});
-
-  const currentGoals = state.config.get("goals") as Array<Record<string, any>> || []
-
-  let oldGoal = currentGoals.find((goal) => goal.name === name) as Goal
+  
+  let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (!oldGoal) {
     console.log(`There is no goal "${name}" associated with this account. Enter another goal name.`)
   }
@@ -250,19 +211,12 @@ async function editGoal(state: State) {
     return
   }
 
-  const now = Date.now()
+  const toSet = {
+    ...(totalTests && { totalTests: totalTests }),
+  } as {name?: string, tagId?: string, presetId?: string, timeframe?: string, totalTests?: number};
 
-  const goal: Goal = {
-    ...oldGoal,
-    totalTests: Number(totalTests),
-    updatedAt: now,
-  }
-
-  const allGoals = currentGoals.map((oldGoal) => {
-    return oldGoal.name == goal.name ? goal : oldGoal
-  })
-
-  setConfig({"goals": allGoals}, state.config)
+  // @ts-ignore
+  const goal = await editGoalById(state, oldGoal.id, String(state.config.get("localId")), toSet)
 
   console.log(`\nSuccessfully edited the goal named "${goal.name}"`)
 }
@@ -272,28 +226,18 @@ async function deleteGoal(state: State) {
 
   const name = await read({prompt: "Enter the daily goal name to delete: "});
 
-  const currentGoals = state.config.get("goals") as Array<Record<string, any>> || []
-
-  let oldGoal = currentGoals.find((goal) => goal.name === name) as Goal
+  let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (!oldGoal) {
     console.log(`There is no goal "${name}" associated with this account. Enter another goal name.`)
   }
 
-  const allGoals: Array<Record<string, any>> = []
-  for (let goal of currentGoals) {
-    if (goal.name == oldGoal.name) {
-      continue;
-    }
-    allGoals.push(goal)
-  }
+  let goal = await deleteGoalByName(state, name, String(state.config.get("localId")))
 
-  setConfig({"goals": allGoals}, state.config)
-
-  console.log(`\nSuccessfully deleted the goal named "${oldGoal.name}"`)
+  console.log(`\nSuccessfully deleted the goal named "${goal.name}"`)
 }
 
 export function printGoalsTable(
-  goals: Array<Goal>,
+  goals: Array<GoalWithPresetAndTag>,
   goalsObj: GoalsObject,
   verbose?: boolean
 ) {
@@ -304,23 +248,23 @@ export function printGoalsTable(
   for (let goal of goals) {
     let object = {}
     if (verbose) {
-      let mode = goalsObj[goal.tagId]?.presetOptions?.config?.mode
-      let modeNumber = goalsObj[goal.tagId]?.presetOptions?.config[mode]
+      let mode = goalsObj[goal.tagId as string]?.presetOptions?.config?.mode
+      let modeNumber = goalsObj[goal.tagId as string]?.presetOptions?.config[mode]
       object = {
-        "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+        "status": goalsObj[goal.tagId as string]?.count >= goal.totalTests ? `✅` : `❌`,
         name: goal.name,
-        "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
-        "❌ failed": goalsObj[goal.tagId]?.failedAttempts || 0,
-        "preset name": goalsObj[goal.tagId]?.name,
-        "🏆 pb": goalsObj[goal.tagId]?.pb || 'N/A',
-        "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
-        [`${emojiForPresetConfigOption["language"]}`]: `${goalsObj[goal.tagId]?.presetOptions?.config?.language}`,
+        "how many more?": goal.totalTests - goalsObj[goal.tagId as string]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId as string]?.count : 0,
+        "❌ failed": goalsObj[goal.tagId as string]?.failedAttempts || 0,
+        "preset name": goalsObj[goal.tagId as string]?.name,
+        "🏆 pb": goalsObj[goal.tagId as string]?.pb || 'N/A',
+        "pb date": goalsObj[goal.tagId as string]?.pbTimestamp ? new Date(goalsObj[goal.tagId as string].pbTimestamp).toLocaleString() : 'N/A',
+        [`${emojiForPresetConfigOption["language"]}`]: `${goalsObj[goal.tagId as string]?.presetOptions?.config?.language}`,
         "mode": `${mode} ${modeNumber}`,
-        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minWpmCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["minAccCustom"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minAccCustom || 0,
-        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.minBurstCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["blindMode"]}`]: goalsObj[goal.tagId]?.presetOptions?.config?.blindMode || false,
-        "extra preset options": goalsObj[goal.tagId]?.presetOptions ? Object.entries(goalsObj[goal.tagId].presetOptions.config || {}).reduce((acc, [key, value]) => {
+        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minWpmCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["minAccCustom"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minAccCustom || 0,
+        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minBurstCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["blindMode"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.blindMode || false,
+        "extra preset options": goalsObj[goal.tagId as string]?.presetOptions ? Object.entries(goalsObj[goal.tagId as string].presetOptions.config || {}).reduce((acc, [key, value]) => {
           if (bannedPresetOptions.includes(key)) return acc
 
           // suppress as they have their own columns now
@@ -334,7 +278,7 @@ export function printGoalsTable(
           }
 
           // hide minBurstCustomSpeed and minBurst when minBurst is off
-          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId].presetOptions.config.minBurst === "off") {
+          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId as string].presetOptions.config.minBurst === "off") {
             return acc
           }
 
@@ -362,13 +306,13 @@ export function printGoalsTable(
       }
     } else {
       object = {
-          "status": goalsObj[goal.tagId]?.count >= goal.totalTests ? `✅` : `❌`,
+          "status": goalsObj[goal.tagId as string]?.count >= goal.totalTests ? `✅` : `❌`,
           name: goal.name,
-          "how many more?": goal.totalTests - goalsObj[goal.tagId]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId]?.count : 0,
-          "failed tests": goalsObj[goal.tagId]?.failedAttempts || 0,
-          "preset name": goalsObj[goal.tagId]?.name,
-          "pb 🏆": goalsObj[goal.tagId]?.pb || 'N/A',
-          "pb date": goalsObj[goal.tagId]?.pbTimestamp ? new Date(goalsObj[goal.tagId].pbTimestamp).toLocaleString() : 'N/A',
+          "how many more?": goal.totalTests - goalsObj[goal.tagId as string]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId as string]?.count : 0,
+          "failed tests": goalsObj[goal.tagId as string]?.failedAttempts || 0,
+          "preset name": goalsObj[goal.tagId as string]?.name,
+          "pb 🏆": goalsObj[goal.tagId as string]?.pb || 'N/A',
+          "pb date": goalsObj[goal.tagId as string]?.pbTimestamp ? new Date(goalsObj[goal.tagId as string].pbTimestamp).toLocaleString() : 'N/A',
       }
     }
     objects.push(object)
