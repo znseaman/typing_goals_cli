@@ -4,7 +4,8 @@ import type { State } from "../state.js";
 export async function commandConfig(state: State, args?: string[]): Promise<void> {
   if (args && args.length) {
     const [command, field, ...value] = args
-    if (!field) {
+    const commandRequiresField = command == "get" || command == "set" || command == "delete"
+    if (commandRequiresField && !field) {
       console.error(`Usage: config ${command} <field>`)
       return
     }
@@ -31,6 +32,9 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
         } catch (error) {
           console.error(`Unable to delete field "${field}": ${error}`)
         }
+        return
+      case "path":
+        console.log(`This config is located at: ${state.config.path}`)
         return
       default:
         console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
