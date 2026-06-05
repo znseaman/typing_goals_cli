@@ -2,6 +2,7 @@ import type { State } from "../state.js"
 import { isTokenValid, createRequestOptions, setConfig } from "../config.js"
 import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../monkeytype.js"
 import { getTagsByUserId, Tag } from "../db/queries/tags.js";
+import { getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
   // Bypass if under expires in
@@ -31,11 +32,9 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
 
   const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
 
-  // get previous results from config for now
-  const previousResults = state.config.get("results") as ResultResponse[] || []
-  const onlyToday = previousResults.filter((result) => Number(result.timestamp) >= startOfTodayUTC)
+  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, String(state.config.get("localId")), startOfTodayUTC)
 
-  const lastResultTimeStamp = onlyToday.at(0)?.timestamp || startOfTodayUTC
+  const lastResultTimeStamp = onlyToday.at(-1)?.timestamp || startOfTodayUTC
 
   let response
   try {
@@ -48,8 +47,6 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
   }
 
   const allResults = [...(response?.data || []), ...onlyToday]
-
-  setConfig({"results": allResults}, state.config)
 
   const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
   // @ts-ignore
@@ -135,10 +132,9 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
   const startOfTodayUTC = Number(new Date(new Date().toISOString().split("T")[0]))
 
   // get previous results from config for now
-  const previousResults = state.config.get("results") as ResultResponse[] || []
-  const onlyToday = previousResults.filter((result) => Number(result.timestamp) >= startOfTodayUTC)
+  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, String(state.config.get("localId")), startOfTodayUTC)
   
-  const lastResultTimeStamp = previousResults.at(-1)?.timestamp || startOfTodayUTC
+  const lastResultTimeStamp = onlyToday.at(-1)?.timestamp || startOfTodayUTC
 
   let response
   try {
@@ -151,8 +147,6 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
   }
 
   const allResults = [...onlyToday, ...(response?.data || [])]
-
-  setConfig({"results": allResults}, state.config)
 
   return allResults
 }

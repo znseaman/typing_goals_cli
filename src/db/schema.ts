@@ -38,3 +38,16 @@ export const tags = pgTable('tags', {
     .references(() => users.id, {onDelete: 'cascade'})
     .notNull(),
 })
+
+export const results = pgTable('results', {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  fullDetails: json('full_details'),
+  id: text('id').primaryKey().notNull(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+  userId: text('user_id')
+    .references(() => users.id, {onDelete: 'cascade'})
+    .notNull(),
+})
