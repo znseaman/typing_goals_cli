@@ -22,6 +22,13 @@
       "when": 1780628650121,
       "tag": "0002_silky_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780630392796,
+      "tag": "0003_tiresome_vector",
+      "breakpoints": true
     }
   ]
 }

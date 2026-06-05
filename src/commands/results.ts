@@ -1,6 +1,7 @@
 import type { State } from "../state.js"
 import { isTokenValid, createRequestOptions, setConfig } from "../config.js"
 import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../monkeytype.js"
+import { getTagsByUserId, Tag } from "../db/queries/tags.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
   // Bypass if under expires in
@@ -50,8 +51,9 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
 
   setConfig({"results": allResults}, state.config)
 
-  // get all the tags for this user
-  const tags = state.config.get("tags") as Array<Record<string, any>> || []
+  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+  // @ts-ignore
+  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
   const tagsObj = {} as Record<string, {count: number; goal: number; name: string}>
   for (const tag of tags) {
     if (!tagsObj[tag._id]) {

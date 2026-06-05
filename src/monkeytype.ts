@@ -17,7 +17,7 @@ const MONKEYTYPE_REFRESH_TOKEN_URL = `${
 export type MonkeyType = {
   login: (email: string, password: string) => Promise<LoginResponse>,
   getPresets: (requestOptions: RequestOptions) => Promise<PresetsResponse>,
-  getTags: (requestOptions: RequestOptions) => Promise<{data: Tag[]; message: string}>,
+  getTags: (requestOptions: RequestOptions) => Promise<{data: TagResponse[]; message: string}>,
 }
 
 export const headers = new Headers()
@@ -201,7 +201,7 @@ export async function getPresets(requestOptions: RequestOptions): Promise<Preset
   }
 }
 
-export async function getTags(requestOptions: RequestOptions): Promise<{data: Tag[]; message: string}> {
+export async function getTags(requestOptions: RequestOptions): Promise<{data: TagResponse[]; message: string}> {
   const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/users/tags`, requestOptions)
   if (response.status >= 400) {
     throw new Error(
@@ -301,7 +301,7 @@ export async function getResults(offset = 0, limit = 1000, requestOptions: {head
   }
 }
 
-export interface Tag {
+export interface TagResponse {
   _id: string
   name: string
   personalBests: PersonalBests

@@ -24,3 +24,17 @@ export const presets = pgTable('presets', {
     .references(() => users.id, {onDelete: 'cascade'})
     .notNull(),
 })
+
+export const tags = pgTable('tags', {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  fullDetails: json('full_details'),
+  id: text('id').primaryKey().notNull(),
+  name: text('name').notNull().unique(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+  userId: text('user_id')
+    .references(() => users.id, {onDelete: 'cascade'})
+    .notNull(),
+})

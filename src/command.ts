@@ -8,6 +8,7 @@ import { commandResults } from "./commands/results.js"
 import { commandGoals } from "./commands/goals.js"
 import { commandPresets } from "./commands/presets.js"
 import { commandDb } from "./commands/db.js"
+import { commandTags } from "./commands/tags.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -77,6 +78,16 @@ export function getCommands(): Commands {
       name: "results",
       description: "Get today's results from your MonkeyType account",
       execute: commandResults,
+    },
+    "tags": {
+      name: "tags",
+      usage: "tags [delete]",
+      examples: [
+        "tags",
+        "tags delete",
+      ],
+      description: "Get tags from your MonkeyType account, delete your tags from the DB",
+      execute: commandTags,
     },
     "help": {
       name: "help",

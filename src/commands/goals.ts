@@ -3,9 +3,10 @@ import { setConfig } from "../config.js";
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
+import { emojiForPresetConfigOption, PresetResponse, ResultResponse, TagResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
 import { getPresetsByUserId, Preset } from "../db/queries/presets.js";
+import { getTagsByUserId, Tag } from "../db/queries/tags.js";
 
 type Goal = {
   id: string
@@ -66,8 +67,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         // @ts-ignore
         const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
 
-        // get all the tags for this user
-        const tags = state.config.get("tags") as Array<Record<string, any>> || []
+        const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+        // @ts-ignore
+        const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
         const goalsObj = {} as GoalsObject
         
         for (const goal of goals) {
@@ -161,7 +163,9 @@ async function createGoal(state: State) {
   const tagName = await read({prompt: "Enter tag name to connect this goal to: "});
   const totalTests = await read({prompt: "Enter number of tests to meet goal: "});
 
-  const tags = state.config.get("tags") as Array<Record<string, any>> || []
+  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+  // @ts-ignore
+  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
 
   let tagId
   for (const tag of tags) {
