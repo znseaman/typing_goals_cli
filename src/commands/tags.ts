@@ -1,7 +1,8 @@
-import type { State } from "../state.js"
+import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
 import { createRequestOptions } from "../config.js"
 import { TagResponse } from "../monkeytype.js"
 import { createTag, deleteTags, getTagById } from "../db/queries/tags.js"
+import { read } from "read"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
@@ -11,7 +12,12 @@ export async function commandTags(state: State, args?: string[]): Promise<void> 
     switch (command) {
       case "delete":
         try {
-          await deleteTags(state, String(state.config.get("localId")))
+          await removeReadline_runNonReadline_addReadline(state, async () => {
+            const confirm = await read({prompt: "Confirm to delete tags from database (y/n): ", default: "n", silent: false});
+            if (confirm.toLowerCase() !== "y") return
+            await deleteTags(state, String(state.config.get("localId")))
+            console.log(`Successfully deleted all your tags from the database!`)
+          })
         } catch (error) {
           console.error(`Unable to delete presets: ${error}`)
         }
