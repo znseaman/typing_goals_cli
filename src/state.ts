@@ -26,6 +26,7 @@ export type State = {
   monkeytype: MonkeyType,
   config: Conf,
   stopFullExit: boolean,
+  commandHistory: string[]
 }
 
 export async function initializeState(): Promise<State> {
@@ -38,7 +39,9 @@ export async function initializeState(): Promise<State> {
 
   const commands: Commands = getCommands()
 
-  const readline = initializeReadline(getFullCommandList(commands))
+  const commandHistory: string[] = []
+
+  const readline = initializeReadline(getFullCommandList(commands), commandHistory)
 
   return {
     db,
@@ -46,11 +49,12 @@ export async function initializeState(): Promise<State> {
     commands,
     monkeytype,
     config,
-    stopFullExit: false
+    stopFullExit: false,
+    commandHistory,
   }
 }
 
-export function initializeReadline(commandList: Array<string>): Interface {
+export function initializeReadline(commandList: Array<string>, history: string[]): Interface {
   function completer (line: string) {
     const hits = commandList.filter((cmd) => cmd.startsWith(line))
 
@@ -61,6 +65,7 @@ export function initializeReadline(commandList: Array<string>): Interface {
     input: stdin,
     output: stdout,
     completer: completer,
+    history: history,
     prompt: "> ",
   })
 }
@@ -69,6 +74,9 @@ export function initializeReadlineHandlers(state: State): void {
   state.readline.on("line", async (line) => {
     const [commandName, ...args] = line.trim().split(/\s+/);
     const command = state.commands[commandName];
+
+    // add command name to command history
+    state.commandHistory.push(commandName)
 
     if (command) {
       try {
@@ -106,7 +114,7 @@ export async function removeReadline_runNonReadline_addReadline(state: State, ha
     // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
     state.stopFullExit = false
     // Re-create the previous readline and attach the necessary state to it
-    state.readline = initializeReadline(getFullCommandList(state.commands))
+    state.readline = initializeReadline(getFullCommandList(state.commands), state.commandHistory)
     initializeReadlineHandlers(state)
   }
 }

@@ -35,6 +35,7 @@ Once you see a welcome message, you're all set!
 ## Features
 
 1. Tab autocompletion: when typing a command in the CLI, allow for the user to press tab to complete the command. For example, typing "go" + Tab will autocomplete to "goals". If no matches are found, the list of commands will be displayed below.
+2. Command history: arrow up and down through previous commands entered in the CLI.
 
 ## Coming Soon
 
