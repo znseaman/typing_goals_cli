@@ -40,7 +40,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
     } else {
       [email] = args
     }
-    const password = await read({prompt: "Enter password: ", silent: true});
+    const password = await read({prompt: "Enter password: ", silent: true, replace: "*"});
     const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
 
     let response = await state.monkeytype.login(email, password)
