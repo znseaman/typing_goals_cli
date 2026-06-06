@@ -42,6 +42,11 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       // list current goals
       const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
 
+      if (!goals.length) {
+        console.log(`No goals created yet. Type "goals create" to create a goal.`)
+        return
+      }
+
       // sort names alphabetically
       goals.sort((a: GoalWithPresetAndTag, b: GoalWithPresetAndTag) => a.name.localeCompare(b.name))
 
@@ -341,5 +346,5 @@ export function printGoalsTable(
     objects.push(object)
   }
 
-  console.table(objects, Object.keys(objects[0]))
+  console.table(objects, Object.keys(objects?.[0] || {}))
 }
