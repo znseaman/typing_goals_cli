@@ -36,9 +36,9 @@ export async function initializeState(): Promise<State> {
 
   const db = await initializeDB(config)
 
-  const readline = initializeReadline()
+  const commands: Commands = getCommands()
 
-  const commands: Commands = getCommands();
+  const readline = initializeReadline(getFullCommandList(commands))
 
   return {
     db,
@@ -50,10 +50,17 @@ export async function initializeState(): Promise<State> {
   }
 }
 
-export function initializeReadline(): Interface {
+export function initializeReadline(commandList: Array<string>): Interface {
+  function completer (line: string) {
+    const hits = commandList.filter((cmd) => cmd.startsWith(line))
+
+    return [hits.length ? hits : commandList, line]
+  }
+
   return createInterface({
     input: stdin,
     output: stdout,
+    completer: completer,
     prompt: "> ",
   })
 }
@@ -99,11 +106,40 @@ export async function removeReadline_runNonReadline_addReadline(state: State, ha
     // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
     state.stopFullExit = false
     // Re-create the previous readline and attach the necessary state to it
-    state.readline = initializeReadline()
+    state.readline = initializeReadline(getFullCommandList(state.commands))
     initializeReadlineHandlers(state)
   }
 }
 
 export function isProduction(): boolean {
   return !process.env?.ENVIRONMENT ? true : process.env?.ENVIRONMENT == "prod" ? true : false
+}
+
+export function getFullCommandList(commands: Commands): Array<string> {
+  const commandList: Array<string> = Object.keys(commands)
+
+  const subCommands: Array<string> = []
+  for (let command of commandList) {
+    const usage = commands[command].usage
+    const match = usage?.split(" ") || []
+
+    if (!match[1]) continue
+
+    if (isRequiredArgument(match[1])) continue
+    
+    const subs = match[1].replaceAll('[', '').replaceAll(']', '').split("|")
+    for (const sub of subs) {
+      if (isRequiredArgument(sub)) continue
+
+      const fullSubCommand = `${command} ${sub}`
+      subCommands.push(fullSubCommand)
+    }
+  }
+
+  const fullCommandList = [...commandList, ...subCommands]
+  return fullCommandList
+}
+
+function isRequiredArgument(str: string): boolean {
+  return str.startsWith("<") && str.endsWith(">")
 }
