@@ -142,14 +142,21 @@ export function printGoals(
 async function create(state: State) {
   console.log(`Create your goal by following the prompt below:`)
 
-  const name = await read({prompt: "Enter daily goal name: "});
-  const timeframe = await read({prompt: "Enter goal time frame (only daily): ", default: "daily", edit: false});
-  const tagName = await read({prompt: "Enter tag name to connect this goal to: "});
-  const totalTests = await read({prompt: "Enter number of tests to meet goal: "});
-
   const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
   // @ts-ignore
   const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
+  const tagNames = tags.map((tag) => tag.name)
+
+  function completer (line: string) {
+    const hits = tagNames.filter((tag) => tag.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : tagNames, line]
+  }
+
+  const name = await read({prompt: "Enter daily goal name: "});
+  const timeframe = await read({prompt: "Enter goal time frame (only daily): ", default: "daily", edit: false});
+  const tagName = await read({prompt: "Enter tag name to connect this goal to: ", completer: completer});
+  const totalTests = await read({prompt: "Enter number of tests to meet goal: "});
 
   let tagId
   for (const tag of tags) {
@@ -198,7 +205,15 @@ async function create(state: State) {
 async function editGoal(state: State) {
   console.log(`Edit your goal by following the prompt below:`)
 
-  const name = await read({prompt: "Enter the daily goal name to edit: "});
+  const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+  const goalNames = goals.map((goal) => goal.name)
+  function completer (line: string) {
+    const hits = goalNames.filter((goal) => goal.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : goalNames, line]
+  }
+
+  const name = await read({prompt: "Enter the daily goal name to edit: ", completer: completer});
   const totalTests = await read({prompt: "Enter new number of tests to meet goal: "});
   
   let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
@@ -224,7 +239,15 @@ async function editGoal(state: State) {
 async function deleteGoal(state: State) {
   console.log(`Delete your goal by following the prompt below:`)
 
-  const name = await read({prompt: "Enter the daily goal name to delete: "});
+  const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+  const goalNames = goals.map((goal) => goal.name)
+  function completer (line: string) {
+    const hits = goalNames.filter((goal) => goal.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : goalNames, line]
+  }
+
+  const name = await read({prompt: "Enter the daily goal name to delete: ", completer: completer});
 
   let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (!oldGoal) {
