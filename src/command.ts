@@ -39,7 +39,7 @@ export function getCommands(): Commands {
     },
     "goals": {
       name: "goals",
-      usage: "goals [-v|create|edit|delete]",
+      usage: "goals [-v|create|edit|delete] [<name>] [<tagName>] [<confirmDefault>]",
       examples: [
         "goals",
         "goals -v #verbose",
