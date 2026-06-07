@@ -69,8 +69,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
             let mode: string = associatedPreset?.config?.mode || (associatedPreset?.config?.words !== 0 ? "words" : (associatedPreset?.config?.time !== 0 ? "time" : "unknown mode"))
             let mode2: string = String(associatedPreset?.config?.words || associatedPreset?.config?.time || "")
 
-            let pb = (!mode || !mode2) ? "N/A" : associatedTag.personalBests[mode][mode2][0].wpm
-            let pbTimestamp = (!mode || !mode2) ? "N/A" : associatedTag.personalBests[mode][mode2][0].timestamp
+            let pb = (!mode || !mode2) ? "N/A" : associatedTag?.personalBests?.[mode]?.[mode2]?.[0]?.wpm
+            let pbTimestamp = (!mode || !mode2) ? "N/A" : associatedTag?.personalBests?.[mode]?.[mode2]?.[0]?.timestamp
 
             goalsObj[associatedTag._id] = {
               count: 0,
@@ -148,54 +148,50 @@ export function printGoals(
 async function create(state: State, args?: string[]) {
   console.log(`\nCreate your goal by following the prompt below:\n`)
 
-  let [name, tagName, confirmDefault] = args || ["", "", ""]
+  let [name, presetName, confirmDefault] = args || ["", "", ""]
 
   const defaultOptions = {
     "timeframe": "daily",
     "totalTests": 2
   }
 
-  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
-  // @ts-ignore
-  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
-  const tagNames = tags.map((tag) => tag.name)
-
-  function completer (line: string) {
-    const hits = tagNames.filter((tag) => tag.toLowerCase().startsWith(line.toLowerCase()))
-
-    return [hits.length ? hits : tagNames, line]
-  }
-
-  if (!name) name = await read({prompt: "Enter daily goal name: "});
-  const timeframe = confirmDefault ? defaultOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultOptions.timeframe, edit: false});
-  if (!tagName) tagName = await read({prompt: "Enter tag name to connect this goal to: ", completer: completer});
-  const totalTests = confirmDefault ? defaultOptions.totalTests : await read({prompt: "Enter number of tests to meet goal: ", default: defaultOptions.totalTests});
-
-  let tagId
-  for (const tag of tags) {
-    if (tag.name === tagName) {
-      tagId = tag._id
-    }
-  }
-
-  if (!tagId) {
-    console.log(`There is no tag name, "${tagName}" associated with this account. Enter another tag name.`)
-    return
-  }
-
   const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
   // @ts-ignore
   const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
+  const presetNames = presets.map((preset) => preset.name)
 
+  function completer (line: string) {
+    const hits = presetNames.filter((preset) => preset.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : presetNames, line]
+  }
+
+  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+  // @ts-ignore
+  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
+
+  if (!name) name = await read({prompt: "Enter daily goal name: "});
+  const timeframe = confirmDefault ? defaultOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultOptions.timeframe, edit: false});
+  if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: completer});
+  const totalTests = confirmDefault ? defaultOptions.totalTests : await read({prompt: "Enter number of tests to meet goal: ", default: defaultOptions.totalTests});
+
+  let tagId
   let presetId
   for (const preset of presets) {
-    if (preset?.config?.tags?.includes(tagId)) {
+    if (preset.name === presetName) {
       presetId = preset._id
+      tagId = preset?.config?.tags?.[0] || ""
+      break
     }
   }
 
   if (!presetId) {
-    console.log(`There is no preset that contains the tag "${tagName}" (_id: ${tagId}) associated with this account. Check your MonkeyType presets to verify the tag has been saved to a preset.`)
+    console.log(`There is no preset with the name "${presetName}" associated with this account. Enter another preset name.`)
+    return
+  }
+
+  if (!tagId) {
+    console.log(`There is no tag associated with preset "${presetName}" on this account. Verify that this preset has at least one tag.`)
     return
   }
 
@@ -210,7 +206,7 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  const goal = await createGoal(state, name, tagId, presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
+  const goal = await createGoal(state, name, presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
 
   console.log(`\nSuccessfully created a new goal named "${goal.name}"`)
 }
@@ -296,8 +292,8 @@ async function editGoal(state: State, args?: string[]) {
   const toSet = {
     ...(oldGoal.totalTests !== totalTests && { totalTests: totalTests }),
     ...(name !== newName && {name: newName}),
-    ...(oldTagName !== newTagName && {tagId: newTag.id, presetId: newPreset.id})
-  } as {name?: string, tagId?: string, presetId?: string, timeframe?: string, totalTests?: number};
+    ...(oldTagName !== newTagName && {presetId: newPreset.id})
+  } as {name?: string, presetId?: string, timeframe?: string, totalTests?: number};
 
   // @ts-ignore
   const goal = await editGoalById(state, oldGoal.id, String(state.config.get("localId")), toSet)

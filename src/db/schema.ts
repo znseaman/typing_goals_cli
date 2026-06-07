@@ -56,9 +56,6 @@ export const goals = pgTable('goals', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   id: uuid('id').defaultRandom().primaryKey().notNull(),
   name: text('name').notNull(),
-  tagId: text('tag_id')
-    .references(() => tags.id, {onDelete: 'cascade'})
-    .notNull(),
   presetId: text('preset_id')
     .references(() => presets.id, {onDelete: 'cascade'})
     .notNull(),
