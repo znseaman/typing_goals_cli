@@ -166,10 +166,6 @@ async function create(state: State, args?: string[]) {
     return [hits.length ? hits : presetNames, line]
   }
 
-  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
-  // @ts-ignore
-  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
-
   if (!name) name = await read({prompt: "Enter daily goal name: "});
   const timeframe = confirmDefault ? defaultOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultOptions.timeframe, edit: false});
   if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: completer});
@@ -245,54 +241,40 @@ async function editGoal(state: State, args?: string[]) {
     return
   }
 
-  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+  const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
   // @ts-ignore
-  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
-  const tagNames = tags.map((tag) => tag.name)
+  const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
+  const presetNames = presets.map((preset) => preset.name)
 
-  function tagCompleter (line: string) {
-    const hits = tagNames.filter((tag) => tag.toLowerCase().startsWith(line.toLowerCase()))
+  function presetCompleter (line: string) {
+    const hits = presetNames.filter((preset) => preset.toLowerCase().startsWith(line.toLowerCase()))
 
-    return [hits.length ? hits : tagNames, line]
+    return [hits.length ? hits : presetNames, line]
   }
-  const oldTagName = tags.find((tag) => tag._id === oldGoal.tagId)?.name
-  const newTagName = await read({prompt: "Enter new tag name to connect this goal to: ", default: oldTagName, completer: tagCompleter});
 
-  // does the new tag name really exist at all?
-  const newTag = await getTagByName(state, String(state.config.get("localId")), newTagName)
-  if (!newTag) {
-    console.log(`There is no tag "${newTagName}" associated with this user. Enter another tag name.`)
+  const oldPresetName = presets.find((preset) => preset._id === oldGoal.presetId)?.name
+  const newPresetName = await read({prompt: "Enter new preset name to connect this goal to: ", default: oldPresetName, completer: presetCompleter});
+
+  const newPreset = await getPresetByName(state, String(state.config.get("localId")), newPresetName)
+  if (!newPreset) {
+    console.log(`There is no preset "${newPresetName}" associated with this user. Enter another preset name.`)
     return
   }
 
-  // only check if the tag names have changed
-  if (oldTagName !== newTagName) {
-    // does the new tag name already have a goal that it's associated with?
+  // only check if the preset names have changed
+  if (oldPresetName !== newPresetName) {
+    // does the new preset name already have a goal that it's associated with?
     for (let goal of goals) {
-      if (goal.tagId === newTag.id) {
+      if (goal.presetId === newPreset.id) {
         console.log(`There is already a goal, ${goal.name}, associated with this tag. Enter another tag name.`)
       }
-    }
-  }
-
-  // is there a preset with this new tag name?
-  const newPreset = await getPresetByName(state, String(state.config.get("localId")), newTagName)
-  if (!newPreset) {
-    console.log(`There is no preset "${newTagName}" that uses the same tag name. Enter another tag name.`)
-    return
-  }
-
-  // does the new preset name already have a goal that it's associated with?
-  for (let goal of goals) {
-    if (goal.presetId === newPreset.id) {
-      console.log(`There is already a goal, ${goal.name}, associated with this preset. Enter another tag name.`)
     }
   }
 
   const toSet = {
     ...(oldGoal.totalTests !== totalTests && { totalTests: totalTests }),
     ...(name !== newName && {name: newName}),
-    ...(oldTagName !== newTagName && {presetId: newPreset.id})
+    ...(oldPresetName !== newPresetName && {presetId: newPreset.id})
   } as {name?: string, presetId?: string, timeframe?: string, totalTests?: number};
 
   // @ts-ignore
