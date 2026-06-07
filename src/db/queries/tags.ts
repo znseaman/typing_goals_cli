@@ -1,5 +1,5 @@
 import type { State } from "../../state.js"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 
 import { tags } from '../schema.js'
 import { TagResponse } from "../../monkeytype.js"
@@ -13,6 +13,16 @@ export async function createTag(state: State, id: string, name: string, fullDeta
 
 export async function getTagById(state: State, id: string) {
   const [result] = await state.db.select().from(tags).where(eq(tags.id, id))
+  return result
+}
+
+export async function getTagByName(state: State, userId: string, name: string) {
+  const [result] = await state.db.select().from(tags).where(
+    and(
+      eq(tags.userId, userId),
+      eq(tags.name, name)
+    )
+  )
   return result
 }
 

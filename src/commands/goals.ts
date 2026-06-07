@@ -3,8 +3,8 @@ import { read } from "read";
 import { getAllResults } from "./results.js";
 import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
-import { getPresetsByUserId, Preset } from "../db/queries/presets.js";
-import { getTagsByUserId, Tag } from "../db/queries/tags.js";
+import { getPresetByName, getPresetsByUserId, Preset } from "../db/queries/presets.js";
+import { getTagByName, getTagsByUserId, Tag } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
 
 type GoalsObject = Record<string, {
@@ -234,21 +234,69 @@ async function editGoal(state: State, args?: string[]) {
   }
 
   if (!name) name = await read({prompt: "Enter the daily goal name to edit: ", completer: completer});
-  const totalTests = await read({prompt: "Enter new number of tests to meet goal: "});
-  
+
   let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (!oldGoal) {
     console.log(`There is no goal "${name}" associated with this account. Enter another goal name.`)
     return
   }
 
+  const newName = await read({prompt: "Enter the new goal name: ", default: name});
+  const totalTests = await read({prompt: "Enter new number of tests to meet goal: ", default: oldGoal.totalTests});
+
   if (Number.isNaN(Number(totalTests))) {
     console.log(`Invalid number of tests entered (${totalTests}). Enter in a number.`)
     return
   }
 
+  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
+  // @ts-ignore
+  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
+  const tagNames = tags.map((tag) => tag.name)
+
+  function tagCompleter (line: string) {
+    const hits = tagNames.filter((tag) => tag.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : tagNames, line]
+  }
+  const oldTagName = tags.find((tag) => tag._id === oldGoal.tagId)?.name
+  const newTagName = await read({prompt: "Enter new tag name to connect this goal to: ", default: oldTagName, completer: tagCompleter});
+
+  // does the new tag name really exist at all?
+  const newTag = await getTagByName(state, String(state.config.get("localId")), newTagName)
+  if (!newTag) {
+    console.log(`There is no tag "${newTagName}" associated with this user. Enter another tag name.`)
+    return
+  }
+
+  // only check if the tag names have changed
+  if (oldTagName !== newTagName) {
+    // does the new tag name already have a goal that it's associated with?
+    for (let goal of goals) {
+      if (goal.tagId === newTag.id) {
+        console.log(`There is already a goal, ${goal.name}, associated with this tag. Enter another tag name.`)
+      }
+    }
+  }
+
+  // is there a preset with this new tag name?
+  const newPreset = await getPresetByName(state, String(state.config.get("localId")), newTagName)
+  if (!newPreset) {
+    console.log(`There is no preset "${newTagName}" that uses the same tag name. Enter another tag name.`)
+    return
+  }
+
+  // does the new preset name already have a goal that it's associated with?
+  for (let goal of goals) {
+    if (goal.presetId === newPreset.id) {
+      console.log(`There is already a goal, ${goal.name}, associated with this preset. Enter another tag name.`)
+    }
+  }
+
   const toSet = {
-    ...(totalTests && { totalTests: totalTests }),
+    ...(oldGoal.totalTests !== totalTests && { totalTests: totalTests }),
+    ...(name !== newName && {name: newName}),
+    ...(oldTagName !== newTagName && {tagId: newTag.id, presetId: newPreset.id})
   } as {name?: string, tagId?: string, presetId?: string, timeframe?: string, totalTests?: number};
 
   // @ts-ignore
