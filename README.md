@@ -14,8 +14,66 @@ This tool was built so it becomes easy improve your typing through deliberate pr
 
 ## Pre-Setup
 
+### NodeJS
 This tool requires the following to be setup prior to running the project:
 - Node.js (install [nvm](https://github.com/nvm-sh/nvm) to manage node versions and see what version this project requires by viewing the `.nvmrc`)
+
+### Docker
+This tool uses docker to fetch the DB
+
+### PostgreSQL
+This tool requires setting up a Postgres DB which can be found at [PostgreSQL Local Setup](https://orm.drizzle.team/docs/guides/postgresql-local-setup). My instructions match what are done there but add more context if you're unfamiliar with Docker.
+
+1. Pull down `postgres:18`:
+```shell
+docker pull postgres:18
+```
+
+2. Verify `postgres:18` exists in the list:
+```shell
+docker images
+```
+
+3. Run the container in detached mode with a name, environment variables, and publishing container's port(s) to the host using the postgres image:
+```shell
+docker run -d --name typing_goals_cli --env POSTGRES_PASSWORD=postgres --publish 5432:5432 postgres
+```
+
+4. Verify the container created is running by checking that the IMAGE is `postgres` and the CREATED is `X seconds go`:
+```shell
+docker ps
+```
+
+5. Check the details about the database running in that container such as what's the user that owns the database:
+```shell
+docker logs <container_id>
+```
+
+6. Get the database url
+The URL format is:
+```shell
+postgres://<user>:<password>@<host>:<port>/<database>
+```
+Given the actual values from this process, the url will be:
+```shell
+postgres://postgres:postgres@localhost:5432/postgres
+```
+ℹ️ Keep a copy of this database url as it will be prompted from the CLI
+
+
+Test the database has been setup in Docker by connecting to it and running a few commands:
+```shell
+docker exec -it <container_id> psql -U postgres
+```
+
+This should show a prompt for a SQL command and enter in the following:
+```shell
+SELECT version();
+```
+
+To exit the output screen, press `q`
+
+To exit the container, type `quit`
 
 ## Setup
 
@@ -43,4 +101,4 @@ Once you see a welcome message, you're all set!
 [X] Add 'Remember Me' feature to refresh tokens when they expire
 [X] `results` command to list all tests completed today on MonkeyType
 [X] `goals` command to create, read, update, and delete daily goals
-[] `clear` command to wipe the text from the CLI
+[X] `clear` command to wipe the text from the CLI

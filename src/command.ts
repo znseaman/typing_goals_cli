@@ -9,6 +9,7 @@ import { commandGoals } from "./commands/goals.js"
 import { commandPresets } from "./commands/presets.js"
 import { commandDb } from "./commands/db.js"
 import { commandTags } from "./commands/tags.js"
+import { commandClear } from "./commands/clear.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -23,6 +24,11 @@ export function getCommands(): Commands {
         "db select now()",
       ],
       execute: commandDb,
+    },
+    "clear": {
+      name: "clear",
+      description: "Clear the CLI",
+      execute: commandClear,
     },
     "config": {
       name: "config",
