@@ -4,6 +4,7 @@ import { createRequestOptions, isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
 import { createUser, getUserById } from "../db/queries/users.js";
 import { createPreset, getPresetById } from "../db/queries/presets.js";
+import { createTag, getTagById } from "../db/queries/tags.js";
 
 export interface LoginResponse {
   displayName: string
@@ -88,9 +89,22 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
     const tags = await state.monkeytype.getTags(requestOptions)
 
     if (tags) {
-      const data = {"tags": tags?.data}
-      setConfig(data, state.config)
-      console.log(`\nSuccessfully updated your tags!\n`)
+      // save tags to db
+      for await (const tag of tags?.data) {
+        try {
+          const exists = await getTagById(state, tag._id)
+          if (exists) continue
+
+          const saved = await createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
+          if (saved) {
+            console.debug(`db:createTag - ${saved.id} - ${saved.name}`)
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            console.error(error?.message, { code: JSON.stringify(error) })
+          }
+        }
+      }
     }
   }
 
