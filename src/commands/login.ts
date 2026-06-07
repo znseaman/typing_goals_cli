@@ -1,10 +1,9 @@
 
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
-import { createRequestOptions, isTokenValid, setConfig } from "../config.js";
+import { isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
 import { createUser, getUserById } from "../db/queries/users.js";
-import { createPreset, getPresetById } from "../db/queries/presets.js";
-import { createTag, getTagById } from "../db/queries/tags.js";
+import { savePresetsAndTags } from "./presets.js";
 
 export interface LoginResponse {
   displayName: string
@@ -64,48 +63,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
       }
     }
 
-    const requestOptions = createRequestOptions(state.config, 'GET')
-    const presets = await state.monkeytype.getPresets(requestOptions)
-
-    if (presets) {
-      // save presets to db
-      for await (const preset of presets?.data) {
-        try {
-          const exists = await getPresetById(state, preset._id)
-          if (exists) continue
-
-          const saved = await createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
-          if (saved) {
-            console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
-          }
-        } catch (error) {
-          if (error instanceof Error) {
-            console.error(error?.message, { code: JSON.stringify(error) })
-          }
-        }
-      }
-    }
-
-    const tags = await state.monkeytype.getTags(requestOptions)
-
-    if (tags) {
-      // save tags to db
-      for await (const tag of tags?.data) {
-        try {
-          const exists = await getTagById(state, tag._id)
-          if (exists) continue
-
-          const saved = await createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
-          if (saved) {
-            console.debug(`db:createTag - ${saved.id} - ${saved.name}`)
-          }
-        } catch (error) {
-          if (error instanceof Error) {
-            console.error(error?.message, { code: JSON.stringify(error) })
-          }
-        }
-      }
-    }
+    await savePresetsAndTags(state, false, false)
   }
 
   await removeReadline_runNonReadline_addReadline(state, handler)
