@@ -45,11 +45,12 @@ export function getCommands(): Commands {
     },
     "goals": {
       name: "goals",
-      usage: "goals [-v|create|edit|delete] [<name>] [<tagName>] [<confirmDefault>]",
+      usage: "goals [-v|create|edit|delete] [<name>] [<type>] [<measure>] [<presetName>] [<confirmDefault>]",
       examples: [
         "goals",
         "goals -v #verbose",
         "goals create",
+        "goals create Normal count 2 normalW25 y",
         "goals edit",
         "goals delete",
       ],

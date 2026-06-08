@@ -1,4 +1,4 @@
-import {integer, json, pgTable, text, timestamp, uuid} from "drizzle-orm/pg-core"
+import {integer, json, pgEnum, pgTable, text, timestamp, uuid} from "drizzle-orm/pg-core"
 
 export const users = pgTable('users', {
   id: text('id').primaryKey().notNull(),
@@ -52,10 +52,14 @@ export const results = pgTable('results', {
     .notNull(),
 })
 
+export const goalTypeEnum = pgEnum("type", ["time", "count"])
+
 export const goals = pgTable('goals', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   id: uuid('id').defaultRandom().primaryKey().notNull(),
   name: text('name').notNull(),
+  type: goalTypeEnum('type').notNull(),
+  measure: integer('measure').notNull(),
   presetId: text('preset_id')
     .references(() => presets.id, {onDelete: 'cascade'})
     .notNull(),

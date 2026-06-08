@@ -4,17 +4,21 @@ import { getAllResults } from "./results.js";
 import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
 import { getPresetByName, getPresetsByUserId, Preset } from "../db/queries/presets.js";
-import { getTagByName, getTagsByUserId, Tag } from "../db/queries/tags.js";
+import { getTagsByUserId, Tag } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
+import { intervalToDuration, formatDuration, milliseconds, Duration } from 'date-fns';
 
 type GoalsObject = Record<string, {
   count: number;
   goal: number;
   name: string,
   goalName: string,
+  goalType: string,
   goalTimeFrame: string,
   goalTotalTests: number,
   failedAttempts: number,
+  goalTotalTime: number,
+  totalSeconds: number,
   pb: number,
   pbTimestamp: number,
   presetOptions: Record<string, any>
@@ -44,7 +48,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
 
       if (!goals.length) {
-        console.log(`No goals created yet. Type "goals create" to create a goal.`)
+        console.log(`\nNo goals created yet. Type "goals create" to create a goal.\n`)
         return
       }
 
@@ -74,14 +78,17 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
             goalsObj[associatedTag._id] = {
               count: 0,
-              goal: goal ? goal.totalTests : 0,
+              goal: goal ? goal.measure : 0,
               goalName: goal?.name,
+              goalType: goal?.type,
               goalTimeFrame: goal?.timeframe,
-              goalTotalTests: goal?.totalTests,
+              goalTotalTests: goal?.measure,
+              goalTotalTime: goal?.measure,
               name: associatedTag.name,
               pb: pb,
               pbTimestamp: pbTimestamp,
               failedAttempts: 0,
+              totalSeconds: 0,
               presetOptions: associatedPreset || {},
             }
           }
@@ -92,6 +99,12 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
           if (goalsObj[tagId]) {
             goalsObj[tagId].count += 1
             goalsObj[tagId].failedAttempts += (result?.restartCount || 0)
+            
+            // include complete and incomplete tests
+            goalsObj[tagId].totalSeconds += result.testDuration
+            if (result.incompleteTestSeconds) {
+              goalsObj[tagId].totalSeconds += result.incompleteTestSeconds
+            }
           }
         }
 
@@ -146,9 +159,12 @@ export function printGoals(
 }
 
 async function create(state: State, args?: string[]) {
-  console.log(`\nCreate your goal by following the prompt below:\n`)
+  let [name, type, measure, presetName, confirmDefault] = args || ["", "", "", "", ""]
 
-  let [name, presetName, confirmDefault] = args || ["", "", ""]
+  // all args provided, no print about following a prompt
+  if (!name || !type || !measure || !presetName || !confirmDefault) {
+    console.log(`\nCreate your goal by following the prompt below:\n`)
+  }
 
   const defaultOptions = {
     "timeframe": "daily",
@@ -167,7 +183,52 @@ async function create(state: State, args?: string[]) {
   }
 
   if (!name) name = await read({prompt: "Enter daily goal name: "});
+  if (!type) type = await read({prompt: "Enter goal type (time, count): ", default: "count"});
+
+  if (type !== "time" && type !== "count") {
+    console.log(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
+    return
+  }
+
+  if (!measure) measure = type === "time" ? await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: "5m"}) : await read({prompt: `Enter number of tests to complete goal: `, default: "2"})
+  
+  // if type === "count", measure should be a valid number
+  if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)))) {
+    console.log(`Invalid number of tests entered "${measure}". Enter in a valid number.`)
+    return
+  }
+
+  // if type === "time", measure should have a \d+[a-zA-Z]+ format
+  //    if measure isn't in that format, console.log and return
+  // convert measure into a number by storing the time in milliseconds
+
+  if (type === "time") {
+    const timeRegex = /^(\d+)(\w+)/
+    const captureGroups = timeRegex.exec(measure)
+    if (!captureGroups) {
+      console.log(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
+      return
+    }
+    
+    const number = captureGroups[1]
+    const duration = captureGroups[2]
+    const validTimeDurations = ["ms", "s", "m", "h"]
+    if (!validTimeDurations.includes(duration)) {
+      console.log(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
+      return
+    }
+
+    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
+      console.log(`Invalid time of of tests entered "${measure}". Enter in a valid number.`)
+      return
+    }
+
+    // convert measure into a number by storing the time in milliseconds
+    measure = convertTimeToMilliseconds(Number(number), duration)
+  }
+
   const timeframe = confirmDefault ? defaultOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultOptions.timeframe, edit: false});
+
   if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: completer});
   const totalTests = confirmDefault ? defaultOptions.totalTests : await read({prompt: "Enter number of tests to meet goal: ", default: defaultOptions.totalTests});
 
@@ -182,12 +243,12 @@ async function create(state: State, args?: string[]) {
   }
 
   if (!presetId) {
-    console.log(`There is no preset with the name "${presetName}" associated with this account. Enter another preset name.`)
+    console.log(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
     return
   }
 
   if (!tagId) {
-    console.log(`There is no tag associated with preset "${presetName}" on this account. Verify that this preset has at least one tag.`)
+    console.log(`There is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
     return
   }
 
@@ -202,20 +263,15 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  const goal = await createGoal(state, name, presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
+  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
 
-  console.log(`\nSuccessfully created a new goal named "${goal.name}"`)
+  console.log(`\nSuccessfully created a new goal named "${goal.name}"\n`)
 }
 
 async function editGoal(state: State, args?: string[]) {
   console.log(`\nEdit your goal by following the prompt below:\n`)
 
-  let [name, tagName, confirmDefault] = args || ["", "", ""]
-
-  if (tagName || confirmDefault) {
-    console.log(`Usage: goals edit <name>`)
-    return
-  }
+  let [name, type, measure, presetName, confirmDefault] = args || ["", "", "", "", ""]
 
   const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
   const goalNames = goals.map((goal) => goal.name)
@@ -232,13 +288,52 @@ async function editGoal(state: State, args?: string[]) {
     console.log(`There is no goal "${name}" associated with this account. Enter another goal name.`)
     return
   }
-
+  
   const newName = await read({prompt: "Enter the new goal name: ", default: name});
-  const totalTests = await read({prompt: "Enter new number of tests to meet goal: ", default: oldGoal.totalTests});
 
-  if (Number.isNaN(Number(totalTests))) {
-    console.log(`Invalid number of tests entered (${totalTests}). Enter in a number.`)
+  if (!type) type = await read({prompt: "Enter new goal type (time, count): ", default: oldGoal.type});
+
+  if (type !== "time" && type !== "count") {
+    console.log(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
     return
+  }
+
+  // This value should be based on what the old goal's measure was
+  if (!measure) measure = type === "time" ? await read({prompt: `Enter new total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: convertMillisecondsToSimplifiedTime(oldGoal.measure)}) : await read({prompt: `Enter new number of tests to complete goal: `, default: String(oldGoal.measure)})
+
+  // if type === "count", measure should be a valid number
+  if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)))) {
+    console.log(`Invalid number of tests entered "${measure}". Enter in a valid number.`)
+    return
+  }
+
+  // if type === "time", measure should have a \d+[a-zA-Z]+ format
+  //    if measure isn't in that format, console.log and return
+  // convert measure into a number by storing the time in milliseconds
+
+  if (type === "time") {
+    const timeRegex = /^(\d+)(\w+)/
+    const captureGroups = timeRegex.exec(measure)
+    if (!captureGroups) {
+      console.log(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
+      return
+    }
+    
+    const number = captureGroups[1]
+    const duration = captureGroups[2]
+    const validTimeDurations = ["ms", "s", "m", "h"]
+    if (!validTimeDurations.includes(duration)) {
+      console.log(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
+      return
+    }
+
+    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
+      console.log(`Invalid time of of tests entered "${measure}". Enter in a valid number.`)
+      return
+    }
+
+    // convert measure into a number by storing the time in milliseconds
+    measure = convertTimeToMilliseconds(Number(number), duration)
   }
 
   const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
@@ -272,25 +367,23 @@ async function editGoal(state: State, args?: string[]) {
   }
 
   const toSet = {
-    ...(oldGoal.totalTests !== totalTests && { totalTests: totalTests }),
+    ...((oldGoal.type !== type || oldGoal.measure !== Number(measure)) && { type: type, measure: Number(measure) }),
     ...(name !== newName && {name: newName}),
     ...(oldPresetName !== newPresetName && {presetId: newPreset.id})
-  } as {name?: string, presetId?: string, timeframe?: string, totalTests?: number};
+  } as {name?: string, type?: string, measure?: number, presetId?: string, timeframe?: string};
 
   // @ts-ignore
   const goal = await editGoalById(state, oldGoal.id, String(state.config.get("localId")), toSet)
 
-  console.log(`\nSuccessfully edited the goal named "${goal.name}"`)
+  console.log(`\nSuccessfully edited the goal named "${goal.name}"\n`)
 }
 
 async function deleteGoal(state: State, args?: string[]) {
-  console.log(`\nDelete your goal by following the prompt below:\n`)
+  let [name] = args || [""]
 
-  let [name, tagName, confirmDefault] = args || ["", "", ""]
-
-  if (tagName || confirmDefault) {
-    console.log(`Usage: goals delete <name>`)
-    return
+  // all args provided, no print about following a prompt
+  if (!name) {
+    console.log(`\nDelete your goal by following the prompt below:\n`)
   }
 
   const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
@@ -310,7 +403,7 @@ async function deleteGoal(state: State, args?: string[]) {
 
   let goal = await deleteGoalByName(state, name, String(state.config.get("localId")))
 
-  console.log(`\nSuccessfully deleted the goal named "${goal.name}"`)
+  console.log(`\nSuccessfully deleted the goal named "${goal.name}"\n`)
 }
 
 export function printGoalsTable(
@@ -324,13 +417,34 @@ export function printGoalsTable(
   const objects = []
   for (let goal of goals) {
     let object = {}
+
+    let toGo
+    let status
+    if (goal.type === "count") {
+      status = goalsObj[goal.tagId as string]?.count >= goal.measure
+      toGo = status ? 0 : goal.measure - goalsObj[goal.tagId as string]?.count
+    } else if (goal.type === "time") {
+      const totalMilliseconds = goalsObj[goal.tagId as string]?.totalSeconds * 1000
+      status = totalMilliseconds >= goal.measure
+      toGo = status ? 0 : convertMillisecondsToSimplifiedTime(goal.measure - totalMilliseconds)
+      console.log(`status: ${status}`)
+      
+    } else {
+      status = false
+      toGo = 0
+    }
+
     if (verbose) {
       let mode = goalsObj[goal.tagId as string]?.presetOptions?.config?.mode
       let modeNumber = goalsObj[goal.tagId as string]?.presetOptions?.config[mode]
       object = {
-        "status": goalsObj[goal.tagId as string]?.count >= goal.totalTests ? `✅` : `❌`,
+        "status": status ? `✅` : `❌`,
         name: goal.name,
-        "how many more?": goal.totalTests - goalsObj[goal.tagId as string]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId as string]?.count : 0,
+        type: goal.type,
+        "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
+        "to go": toGo,
+        "total time": `${convertMillisecondsToSimplifiedTime((goalsObj[goal.tagId as string]?.totalSeconds || 0) * 1000)}`,
+        "total tests": goalsObj[goal.tagId as string]?.count || 0,
         "❌ failed": goalsObj[goal.tagId as string]?.failedAttempts || 0,
         "preset name": goalsObj[goal.tagId as string]?.name,
         "🏆 pb": goalsObj[goal.tagId as string]?.pb || 'N/A',
@@ -383,17 +497,38 @@ export function printGoalsTable(
       }
     } else {
       object = {
-          "status": goalsObj[goal.tagId as string]?.count >= goal.totalTests ? `✅` : `❌`,
+          "status": status ? `✅` : `❌`,
           name: goal.name,
-          "how many more?": goal.totalTests - goalsObj[goal.tagId as string]?.count > 0 ? goal.totalTests - goalsObj[goal.tagId as string]?.count : 0,
-          "failed tests": goalsObj[goal.tagId as string]?.failedAttempts || 0,
-          "preset name": goalsObj[goal.tagId as string]?.name,
-          "pb 🏆": goalsObj[goal.tagId as string]?.pb || 'N/A',
-          "pb date": goalsObj[goal.tagId as string]?.pbTimestamp ? new Date(goalsObj[goal.tagId as string].pbTimestamp).toLocaleString() : 'N/A',
+          type: goal.type,
+          "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
+          "to go": toGo,
       }
     }
     objects.push(object)
   }
 
   console.table(objects, Object.keys(objects?.[0] || {}))
+}
+
+function convertTimeToMilliseconds(number: number, duration: string): string {
+  switch (duration) {
+    case "ms":
+      return String(number)
+    case "s":
+      return String(milliseconds({seconds: number}))
+    case "m":
+      return String(milliseconds({minutes: number}))
+    case "h":
+      return String(milliseconds({hours: number}))
+    default:
+      return String(0)
+  }
+}
+
+function convertMillisecondsToSimplifiedTime(number: number): string {
+  const duration = intervalToDuration({ start: 0, end: number });
+
+  const readableDuration = formatDuration(duration);
+
+  return readableDuration
 }

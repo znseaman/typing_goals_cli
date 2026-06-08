@@ -50,6 +50,13 @@
       "when": 1780807181682,
       "tag": "0006_perpetual_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780939844640,
+      "tag": "0007_lame_polaris",
+      "breakpoints": true
     }
   ]
 }
