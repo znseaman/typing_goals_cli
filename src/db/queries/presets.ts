@@ -1,7 +1,7 @@
 import type { State } from "../../state.js"
 import { and, eq, sql } from "drizzle-orm"
 
-import { presets } from "../schema.js"
+import { goals, presets } from "../schema.js"
 import { PresetResponse } from "../../monkeytype.js"
 
 export type Preset = typeof presets.$inferSelect
@@ -11,6 +11,7 @@ export type PresetObject = {
   name: string,
   tagId: string,
   config: string,
+  goalName: string,
 }
 
 export async function createPreset(state: State, id: string, name: string, fullDetails: PresetResponse, userId: string) {
@@ -41,7 +42,8 @@ export async function getPresets(state: State): Promise<Array<PresetObject>> {
     name: presets.name,
     tagId: sql<string>`${presets.fullDetails}->'config'->'tags'->>0`,
     config: sql<string>`${presets.fullDetails}->>'config'`,
-  }).from(presets).where(eq(presets.userId, userId))
+    goalName: goals.name,
+  }).from(presets).fullJoin(goals, eq(presets.id, goals.presetId)).where(eq(presets.userId, userId)) as Promise<Array<PresetObject>>
 }
 
 export async function deletePresets(state: State, userId: string) {

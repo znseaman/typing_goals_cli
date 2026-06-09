@@ -19,7 +19,7 @@ export async function getGoalsByUserId(state: State, userId: string) {
   ).from(goals).leftJoin(presets, eq(goals.presetId, presets.id)).where(eq(goals.userId, userId))
 }
 
-export async function getGoalByName(state: State, name: string, userId: string) {
+export async function getGoalByName(state: State, name: string, userId: string): Promise<GoalWithPresetAndTag | boolean> {
   const result = await state.db.select(
     {id: goals.id, name: goals.name, type: goals.type, measure: goals.measure, presetId: goals.presetId, presetName: presets.name, tagId: sql<string>`${presets.fullDetails}->'config'->'tags'->>0`, timeframe: goals.timeframe}
   ).from(goals).leftJoin(presets, eq(goals.presetId, presets.id)).where(and(eq(goals.name, name), eq(goals.userId, userId)))
