@@ -1,16 +1,16 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { emojiForPresetConfigOption, PresetResponse, ResultResponse } from "../monkeytype.js";
+import { emojiForPresetConfigOption, PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
 import { bannedPresetOptions } from "./presets.js";
-import { getPresetByName, getPresetsByUserId, Preset } from "../db/queries/presets.js";
-import { getTagsByUserId, Tag } from "../db/queries/tags.js";
+import { getPresetByName, getPresets, PresetObject } from "../db/queries/presets.js";
+import { getTags, TagObject } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { intervalToDuration, formatDuration, milliseconds } from 'date-fns';
 
 type GoalsObject = Record<string, {
-  count: number;
-  goal: number;
+  count: number,
+  goal: number,
   name: string,
   goalName: string,
   goalType: string,
@@ -21,7 +21,7 @@ type GoalsObject = Record<string, {
   totalSeconds: number,
   pb: number,
   pbTimestamp: number,
-  presetOptions: Record<string, any>
+  presetConfig: PresetConfig
 }>
 
 export const defaultGoalOptions = {
@@ -68,24 +68,18 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
       try {
         const allResults = await getAllResults(state)
-        const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
-        // @ts-ignore
-        const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
-
-        const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
-        // @ts-ignore
-        const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
+        const presets: Array<PresetObject> = await getPresets(state)
+        const tags: Array<TagObject> = await getTags(state)
         const goalsObj = {} as GoalsObject
         
         for (const goal of goals) {
           let associatedTag = tags.find((tag) => tag._id == goal.tagId as string)
           let associatedPreset = presets.find((preset) => preset._id == goal.presetId)
           if (associatedTag && associatedPreset) {
-            let mode: string = associatedPreset?.config?.mode || (associatedPreset?.config?.words !== 0 ? "words" : (associatedPreset?.config?.time !== 0 ? "time" : "unknown mode"))
-            let mode2: string = String(associatedPreset?.config?.words || associatedPreset?.config?.time || "")
-
-            let pb = (!mode || !mode2) ? "N/A" : associatedTag?.personalBests?.[mode]?.[mode2]?.[0]?.wpm
-            let pbTimestamp = (!mode || !mode2) ? "N/A" : associatedTag?.personalBests?.[mode]?.[mode2]?.[0]?.timestamp
+            const presetConfig = JSON.parse(associatedPreset?.config || "") as PresetConfig
+            const tagPersonalBests = JSON.parse(associatedTag?.personalBests || "") as PersonalBests
+            let mode: string = presetConfig?.mode || (presetConfig?.words !== 0 ? "words" : (presetConfig?.time !== 0 ? "time" : "unknown mode"))
+            let mode2: string = String(presetConfig?.words || presetConfig?.time || "")
 
             goalsObj[associatedTag._id] = {
               count: 0,
@@ -95,12 +89,14 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
               goalTimeFrame: goal?.timeframe,
               goalTotalTests: goal?.measure,
               goalTotalTime: goal?.measure,
-              name: associatedTag.name,
-              pb: pb,
-              pbTimestamp: pbTimestamp,
+              name: associatedPreset.name,
+              // @ts-ignore
+              pb: (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
+              // @ts-ignore
+              pbTimestamp: (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
               failedAttempts: 0,
               totalSeconds: 0,
-              presetOptions: associatedPreset || {},
+              presetConfig: presetConfig || {},
             }
           }
         }
@@ -170,23 +166,14 @@ export function printGoals(
 }
 
 async function create(state: State, args?: string[]) {
-  let [name, type, measure, presetName, confirmDefault] = args || ["", "", "", "", ""]
+  let [name, type, measure, presetName] = args || ["", "", "", ""]
 
   // all args provided, no print about following a prompt
-  if (!name || !type || !measure || !presetName || !confirmDefault) {
+  if (!name || !type || !measure || !presetName) {
     console.log(`\nCreate your goal by following the prompt below:\n`)
   }
 
-  const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
-  // @ts-ignore
-  const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
-  const presetNames = presets.map((preset) => preset.name)
-
-  function completer (line: string) {
-    const hits = presetNames.filter((preset) => preset.toLowerCase().startsWith(line.toLowerCase()))
-
-    return [hits.length ? hits : presetNames, line]
-  }
+  const presets: Array<PresetObject> = await getPresets(state)
 
   if (!name) name = await read({prompt: "Enter daily goal name: "});
   if (!type) type = await read({prompt: "Enter goal type (time, count): ", default: "count"});
@@ -204,16 +191,14 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  const timeframe = confirmDefault ? defaultGoalOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultGoalOptions.timeframe, edit: false});
-
-  if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: completer});
+  if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: createCompleter(presets.map((preset) => preset.name))});
 
   let tagId
   let presetId
   for (const preset of presets) {
     if (preset.name === presetName) {
       presetId = preset._id
-      tagId = preset?.config?.tags?.[0] || ""
+      tagId = preset?.tagId || ""
       break
     }
   }
@@ -234,7 +219,7 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), timeframe)
+  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
 
   console.log(`\nSuccessfully created a new goal named "${goal.name}"\n`)
 }
@@ -242,17 +227,11 @@ async function create(state: State, args?: string[]) {
 async function editGoal(state: State, args?: string[]) {
   console.log(`\nEdit your goal by following the prompt below:\n`)
 
-  let [name, type, measure, presetName, confirmDefault] = args || ["", "", "", "", ""]
+  let [name, type, measure, presetName] = args || ["", "", "", ""]
 
   const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
-  const goalNames = goals.map((goal) => goal.name)
-  function completer (line: string) {
-    const hits = goalNames.filter((goal) => goal.toLowerCase().startsWith(line.toLowerCase()))
 
-    return [hits.length ? hits : goalNames, line]
-  }
-
-  if (!name) name = await read({prompt: "Enter the daily goal name to edit: ", completer: completer});
+  if (!name) name = await read({prompt: "Enter the daily goal name to edit: ", completer: createCompleter(goals.map((goal) => goal.name))});
 
   let oldGoal = goals.find((goal) => goal.name === name)
   if (!oldGoal) {
@@ -278,28 +257,18 @@ async function editGoal(state: State, args?: string[]) {
     return
   }
 
-  const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
-  // @ts-ignore
-  const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
-  const presetNames = presets.map((preset) => preset.name)
-
-  function presetCompleter (line: string) {
-    const hits = presetNames.filter((preset) => preset.toLowerCase().startsWith(line.toLowerCase()))
-
-    return [hits.length ? hits : presetNames, line]
-  }
-
+  const presets: Array<PresetObject> = await getPresets(state)
   const oldPresetName = presets.find((preset) => preset._id === oldGoal.presetId)?.name
-  const newPresetName = await read({prompt: "Enter new preset name to connect this goal to: ", default: oldPresetName, completer: presetCompleter});
+  if (!presetName) presetName = await read({prompt: "Enter new preset name to connect this goal to: ", default: oldPresetName, completer: await createCompleter(presets.map((preset) => preset.name))});
 
-  const newPreset = await getPresetByName(state, String(state.config.get("localId")), newPresetName)
+  const newPreset = await getPresetByName(state, String(state.config.get("localId")), presetName)
   if (!newPreset) {
-    console.log(`There is no preset "${newPresetName}" associated with this user. Enter another preset name.`)
+    console.log(`There is no preset "${presetName}" associated with this user. Enter another preset name.`)
     return
   }
 
   // only check if the preset names have changed
-  if (oldPresetName !== newPresetName) {
+  if (oldPresetName !== presetName) {
     // does the new preset name already have a goal that it's associated with?
     for (let goal of goals) {
       if (goal.presetId === newPreset.id) {
@@ -311,7 +280,7 @@ async function editGoal(state: State, args?: string[]) {
   const toSet = {
     ...((oldGoal.type !== type || oldGoal.measure !== Number(measure)) && { type: type, measure: Number(measure) }),
     ...(name !== newName && {name: newName}),
-    ...(oldPresetName !== newPresetName && {presetId: newPreset.id})
+    ...(oldPresetName !== presetName && {presetId: newPreset.id})
   } as {name?: string, type?: string, measure?: number, presetId?: string, timeframe?: string};
 
   // @ts-ignore
@@ -329,14 +298,8 @@ async function deleteGoal(state: State, args?: string[]) {
   }
 
   const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
-  const goalNames = goals.map((goal) => goal.name)
-  function completer (line: string) {
-    const hits = goalNames.filter((goal) => goal.toLowerCase().startsWith(line.toLowerCase()))
 
-    return [hits.length ? hits : goalNames, line]
-  }
-
-  if (!name) name = await read({prompt: "Enter the daily goal name to delete: ", completer: completer});
+  if (!name) name = await read({prompt: "Enter the daily goal name to delete: ", completer: createCompleter(goals.map((goal) => goal.name))});
 
   let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (!oldGoal) {
@@ -358,15 +321,16 @@ export function printGoalsTable(
 
   const objects = []
   for (let goal of goals) {
-    let object = {}
+    const goalObject = goalsObj[goal.tagId as string]
+    const presetConfig = goalObject.presetConfig
 
     let toGo
     let status
     if (goal.type === "count") {
-      status = goalsObj[goal.tagId as string]?.count >= goal.measure
-      toGo = status ? 0 : goal.measure - goalsObj[goal.tagId as string]?.count
+      status = goalObject?.count >= goal.measure
+      toGo = status ? 0 : goal.measure - goalObject?.count
     } else if (goal.type === "time") {
-      const totalMilliseconds = goalsObj[goal.tagId as string]?.totalSeconds * 1000
+      const totalMilliseconds = goalObject?.totalSeconds * 1000
       status = totalMilliseconds >= goal.measure
       toGo = status ? 0 : convertMillisecondsToSimplifiedTime(goal.measure - totalMilliseconds)
       
@@ -374,29 +338,26 @@ export function printGoalsTable(
       status = false
       toGo = 0
     }
+    
+    let object = {}
 
     if (verbose) {
-      let mode = goalsObj[goal.tagId as string]?.presetOptions?.config?.mode
-      let modeNumber = goalsObj[goal.tagId as string]?.presetOptions?.config[mode]
+      let mode = presetConfig?.mode
+      let modeNumber = Number(presetConfig?.words || presetConfig?.time || "")
       object = {
-        "status": status ? `✅` : `❌`,
-        name: goal.name,
-        type: goal.type,
-        "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
-        "to go": toGo,
-        "total time": `${convertMillisecondsToSimplifiedTime((goalsObj[goal.tagId as string]?.totalSeconds || 0) * 1000)}`,
-        "total tests": goalsObj[goal.tagId as string]?.count || 0,
-        "❌ failed": goalsObj[goal.tagId as string]?.failedAttempts || 0,
-        "preset name": goalsObj[goal.tagId as string]?.name,
-        "🏆 pb": goalsObj[goal.tagId as string]?.pb || 'N/A',
-        "pb date": goalsObj[goal.tagId as string]?.pbTimestamp ? new Date(goalsObj[goal.tagId as string].pbTimestamp).toLocaleString() : 'N/A',
-        [`${emojiForPresetConfigOption["language"]}`]: `${goalsObj[goal.tagId as string]?.presetOptions?.config?.language}`,
+        "total time": `${convertMillisecondsToSimplifiedTime((goalObject?.totalSeconds || 0) * 1000) || "0 minutes"}`,
+        "total tests": goalObject?.count || 0,
+        "❌ failed": goalObject?.failedAttempts || 0,
+        "preset name": goalObject?.name,
+        "🏆 pb": goalObject?.pb || 'N/A',
+        "pb date": goalObject?.pbTimestamp ? new Date(goalObject.pbTimestamp).toLocaleString() : 'N/A',
+        [`${emojiForPresetConfigOption["language"]}`]: `${presetConfig?.language}`,
         "mode": `${mode} ${modeNumber}`,
-        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minWpmCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["minAccCustom"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minAccCustom || 0,
-        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.minBurstCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["blindMode"]}`]: goalsObj[goal.tagId as string]?.presetOptions?.config?.blindMode || false,
-        "extra preset options": goalsObj[goal.tagId as string]?.presetOptions ? Object.entries(goalsObj[goal.tagId as string].presetOptions.config || {}).reduce((acc, [key, value]) => {
+        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: presetConfig?.minWpmCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["minAccCustom"]}`]: presetConfig?.minAccCustom || 0,
+        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: presetConfig?.minBurstCustomSpeed || 0,
+        [`${emojiForPresetConfigOption["blindMode"]}`]: presetConfig?.blindMode || false,
+        "extra preset options": presetConfig ? Object.entries(presetConfig).reduce((acc, [key, value]) => {
           if (bannedPresetOptions.includes(key)) return acc
 
           // suppress as they have their own columns now
@@ -410,7 +371,7 @@ export function printGoalsTable(
           }
 
           // hide minBurstCustomSpeed and minBurst when minBurst is off
-          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && goalsObj[goal.tagId as string].presetOptions.config.minBurst === "off") {
+          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && presetConfig?.minBurst === "off") {
             return acc
           }
 
@@ -436,19 +397,26 @@ export function printGoalsTable(
           return acc
         }, [] as string[]).join(`, `) : 'N/A',
       }
-    } else {
-      object = {
-          "status": status ? `✅` : `❌`,
-          name: goal.name,
-          type: goal.type,
-          "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
-          "to go": toGo,
-      }
     }
-    objects.push(object)
+    objects.push({
+      ...{
+        status: status ? `✅` : `❌`,
+        name: goal.name,
+        type: goal.type,
+        "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
+        "to go": toGo,
+      },
+      ...object
+    })
   }
 
   console.table(objects, Object.keys(objects?.[0] || {}))
+
+  let totalSeconds = 0
+  for (const [key, _] of Object.entries(goalsObj)) {
+    totalSeconds += goalsObj[key].totalSeconds
+  }
+  console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
 }
 
 function convertTimeToMilliseconds(number: number, duration: string): string {
@@ -474,7 +442,7 @@ function convertTimeToMilliseconds(number: number, duration: string): string {
   }
 }
 
-function convertMillisecondsToSimplifiedTime(number: number): string {
+export function convertMillisecondsToSimplifiedTime(number: number): string {
   const duration = intervalToDuration({ start: 0, end: number });
 
   const readableDuration = formatDuration(duration);
@@ -513,4 +481,12 @@ function validateMeasure(measure: string, type: string): string {
   }
 
   return measure
+}
+
+function createCompleter(options: string[]): (line: string) => void {
+  return (line: string) => {
+    const hits = options.filter((option) => option.toLowerCase().startsWith(line.toLowerCase()))
+
+    return [hits.length ? hits : options, line]
+  }
 }

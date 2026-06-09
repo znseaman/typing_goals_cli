@@ -1,8 +1,9 @@
 import type { State } from "../state.js"
 import { isTokenValid, createRequestOptions, setConfig } from "../config.js"
 import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../monkeytype.js"
-import { getTagsByUserId, Tag } from "../db/queries/tags.js";
+import { getTags, TagObject } from "../db/queries/tags.js";
 import { getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
+import { convertMillisecondsToSimplifiedTime } from "./goals.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
   // Bypass if under expires in
@@ -48,15 +49,12 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
 
   const allResults = [...(response?.data || []), ...onlyToday]
 
-  const rawTags: Array<Tag> = await getTagsByUserId(state, String(state.config.get("localId")))
-  // @ts-ignore
-  const tags: Array<TagResponseResponse> = rawTags.map((rawTag) => rawTag?.fullDetails)
-  const tagsObj = {} as Record<string, {count: number; goal: number; name: string}>
+  const tags: Array<TagObject> = await getTags(state)
+  const tagsObj = {} as Record<string, {count: number; name: string}>
   for (const tag of tags) {
     if (!tagsObj[tag._id]) {
       tagsObj[tag._id] = {
         count: 0,
-        goal: 2,
         name: tag.name,
       }
     }
@@ -72,12 +70,12 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
       totalSeconds += result.incompleteTestSeconds
     }
   }
-  console.log(`Time Spent Typing Today:${Math.round(totalSeconds / 60)} minutes`)
+  console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
 }
 
 export function printResultsTable(
   results: ResultResponse[],
-  tagsObj: Record<string, {count: number; goal: number; name: string}>,
+  tagsObj: Record<string, {count: number; name: string}>,
 ) {
   if (!results.length) {
     console.log(`No results to display yet! Take a test to see your results here.\n`)

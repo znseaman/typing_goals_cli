@@ -1,10 +1,16 @@
 import type { State } from "../../state.js"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { tags } from '../schema.js'
 import { TagResponse } from "../../monkeytype.js"
 
 export type Tag = typeof tags.$inferSelect
+
+export type TagObject = {
+  _id: string,
+  name: string,
+  personalBests: string,
+}
 
 export async function createTag(state: State, id: string, name: string, fullDetails: TagResponse, userId: string) {
   const [result] = await state.db.insert(tags).values({fullDetails, id, name, userId}).returning()
@@ -26,8 +32,14 @@ export async function getTagByName(state: State, userId: string, name: string) {
   return result
 }
 
-export async function getTagsByUserId(state: State, userId: string) {
-  return state.db.select().from(tags).where(eq(tags.userId, userId))
+export async function getTags(state: State): Promise<Array<TagObject>> {
+  const userId = String(state.config.get("localId"))
+  
+  return state.db.select({
+    _id: tags.id,
+    name: tags.name,
+    personalBests: sql<string>`${tags.fullDetails}->>'personalBests'`,
+  }).from(tags).where(eq(tags.userId, userId))
 }
 
 export async function deleteTags(state: State, userId: string) {

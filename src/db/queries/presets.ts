@@ -1,10 +1,17 @@
 import type { State } from "../../state.js"
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { presets } from "../schema.js"
 import { PresetResponse } from "../../monkeytype.js"
 
 export type Preset = typeof presets.$inferSelect
+
+export type PresetObject = {
+  _id: string,
+  name: string,
+  tagId: string,
+  config: string,
+}
 
 export async function createPreset(state: State, id: string, name: string, fullDetails: PresetResponse, userId: string) {
   const [result] = await state.db.insert(presets).values({fullDetails, id, name, userId}).returning()
@@ -26,8 +33,15 @@ export async function getPresetByName(state: State, userId: string, name: string
   return result
 }
 
-export async function getPresetsByUserId(state: State, userId: string): Promise<Array<Preset>> {
-  return state.db.select().from(presets).where(eq(presets.userId, userId))
+export async function getPresets(state: State): Promise<Array<PresetObject>> {
+  const userId = String(state.config.get("localId"))
+
+  return state.db.select({
+    _id: presets.id,
+    name: presets.name,
+    tagId: sql<string>`${presets.fullDetails}->'config'->'tags'->>0`,
+    config: sql<string>`${presets.fullDetails}->>'config'`,
+  }).from(presets).where(eq(presets.userId, userId))
 }
 
 export async function deletePresets(state: State, userId: string) {
