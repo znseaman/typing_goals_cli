@@ -306,8 +306,8 @@ async function editGoal(state: State, args?: string[]) {
   let validatedMeasure = false
   while (!measure || !validatedMeasure) {
     measure = type === "time" ? 
-      await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: convertMillisecondsToSimplifiedTime((existingGoal as GoalWithPresetAndTag).measure)}) :
-      await read({prompt: `Enter number of tests to complete goal: `, default: String((existingGoal as GoalWithPresetAndTag).measure)})
+      await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.time : convertMillisecondsToSimplifiedTime((existingGoal as GoalWithPresetAndTag).measure)}) :
+      await read({prompt: `Enter number of tests to complete goal: `, default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.count : String((existingGoal as GoalWithPresetAndTag).measure)})
 
     try {
       measure = validateMeasure(measure, type)
