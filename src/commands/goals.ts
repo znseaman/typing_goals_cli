@@ -6,7 +6,7 @@ import { bannedPresetOptions } from "./presets.js";
 import { getPresetByName, getPresetsByUserId, Preset } from "../db/queries/presets.js";
 import { getTagsByUserId, Tag } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
-import { intervalToDuration, formatDuration, milliseconds, Duration } from 'date-fns';
+import { intervalToDuration, formatDuration, milliseconds } from 'date-fns';
 
 type GoalsObject = Record<string, {
   count: number;
@@ -23,6 +23,17 @@ type GoalsObject = Record<string, {
   pbTimestamp: number,
   presetOptions: Record<string, any>
 }>
+
+export const defaultGoalOptions = {
+  timeframe: "daily",
+  type: "count",
+  measure: {
+    count: "2",
+    time: "5m",
+  }
+}
+
+const validTimeDurations = new Set(["ms", "s", "m", "h", "millisecond", "milliseconds", "second", "seconds", "minute", "minutes", "hour", "hours"])
 
 export async function commandGoals(state: State, args?: string[]): Promise<void> {
   
@@ -166,11 +177,6 @@ async function create(state: State, args?: string[]) {
     console.log(`\nCreate your goal by following the prompt below:\n`)
   }
 
-  const defaultOptions = {
-    "timeframe": "daily",
-    "totalTests": 2
-  }
-
   const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
   // @ts-ignore
   const presets: Array<PresetResponse> = rawPresets.map((rawPreset) => rawPreset?.fullDetails)
@@ -190,47 +196,17 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  if (!measure) measure = type === "time" ? await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: "5m"}) : await read({prompt: `Enter number of tests to complete goal: `, default: "2"})
+  if (!measure) measure = type === "time" ? await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: defaultGoalOptions.measure.time}) : await read({prompt: `Enter number of tests to complete goal: `, default: defaultGoalOptions.measure.count})
   
-  // if type === "count", measure should be a valid number
-  if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)))) {
-    console.log(`Invalid number of tests entered "${measure}". Enter in a valid number.`)
+  try {
+    measure = validateMeasure(measure, type)
+  } catch {
     return
   }
 
-  // if type === "time", measure should have a \d+[a-zA-Z]+ format
-  //    if measure isn't in that format, console.log and return
-  // convert measure into a number by storing the time in milliseconds
-
-  if (type === "time") {
-    const timeRegex = /^(\d+)(\w+)/
-    const captureGroups = timeRegex.exec(measure)
-    if (!captureGroups) {
-      console.log(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
-      return
-    }
-    
-    const number = captureGroups[1]
-    const duration = captureGroups[2]
-    const validTimeDurations = ["ms", "s", "m", "h"]
-    if (!validTimeDurations.includes(duration)) {
-      console.log(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
-      return
-    }
-
-    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
-      console.log(`Invalid time of of tests entered "${measure}". Enter in a valid number.`)
-      return
-    }
-
-    // convert measure into a number by storing the time in milliseconds
-    measure = convertTimeToMilliseconds(Number(number), duration)
-  }
-
-  const timeframe = confirmDefault ? defaultOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultOptions.timeframe, edit: false});
+  const timeframe = confirmDefault ? defaultGoalOptions.timeframe : await read({prompt: "Enter goal time frame (only daily): ", default: defaultGoalOptions.timeframe, edit: false});
 
   if (!presetName) presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: completer});
-  const totalTests = confirmDefault ? defaultOptions.totalTests : await read({prompt: "Enter number of tests to meet goal: ", default: defaultOptions.totalTests});
 
   let tagId
   let presetId
@@ -252,18 +228,13 @@ async function create(state: State, args?: string[]) {
     return
   }
 
-  if (Number.isNaN(Number(totalTests))) {
-    console.log(`Invalid number of tests entered (${totalTests}). Enter in a number.`)
-    return
-  }
-
   let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
   if (existingGoal) {
     console.log("Goal already exists")
     return
   }
 
-  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), timeframe, Number(totalTests))
+  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), timeframe)
 
   console.log(`\nSuccessfully created a new goal named "${goal.name}"\n`)
 }
@@ -283,7 +254,7 @@ async function editGoal(state: State, args?: string[]) {
 
   if (!name) name = await read({prompt: "Enter the daily goal name to edit: ", completer: completer});
 
-  let oldGoal = await getGoalByName(state, name, String(state.config.get("localId")))
+  let oldGoal = goals.find((goal) => goal.name === name)
   if (!oldGoal) {
     console.log(`There is no goal "${name}" associated with this account. Enter another goal name.`)
     return
@@ -301,39 +272,10 @@ async function editGoal(state: State, args?: string[]) {
   // This value should be based on what the old goal's measure was
   if (!measure) measure = type === "time" ? await read({prompt: `Enter new total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: convertMillisecondsToSimplifiedTime(oldGoal.measure)}) : await read({prompt: `Enter new number of tests to complete goal: `, default: String(oldGoal.measure)})
 
-  // if type === "count", measure should be a valid number
-  if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)))) {
-    console.log(`Invalid number of tests entered "${measure}". Enter in a valid number.`)
+  try {
+    measure = validateMeasure(measure, type)
+  } catch {
     return
-  }
-
-  // if type === "time", measure should have a \d+[a-zA-Z]+ format
-  //    if measure isn't in that format, console.log and return
-  // convert measure into a number by storing the time in milliseconds
-
-  if (type === "time") {
-    const timeRegex = /^(\d+)(\w+)/
-    const captureGroups = timeRegex.exec(measure)
-    if (!captureGroups) {
-      console.log(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
-      return
-    }
-    
-    const number = captureGroups[1]
-    const duration = captureGroups[2]
-    const validTimeDurations = ["ms", "s", "m", "h"]
-    if (!validTimeDurations.includes(duration)) {
-      console.log(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
-      return
-    }
-
-    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
-      console.log(`Invalid time of of tests entered "${measure}". Enter in a valid number.`)
-      return
-    }
-
-    // convert measure into a number by storing the time in milliseconds
-    measure = convertTimeToMilliseconds(Number(number), duration)
   }
 
   const rawPresets: Array<Preset> = await getPresetsByUserId(state, String(state.config.get("localId")))
@@ -427,7 +369,6 @@ export function printGoalsTable(
       const totalMilliseconds = goalsObj[goal.tagId as string]?.totalSeconds * 1000
       status = totalMilliseconds >= goal.measure
       toGo = status ? 0 : convertMillisecondsToSimplifiedTime(goal.measure - totalMilliseconds)
-      console.log(`status: ${status}`)
       
     } else {
       status = false
@@ -513,12 +454,20 @@ export function printGoalsTable(
 function convertTimeToMilliseconds(number: number, duration: string): string {
   switch (duration) {
     case "ms":
+    case "millisecond":
+    case "milliseconds":
       return String(number)
     case "s":
+    case "second":
+    case "seconds":
       return String(milliseconds({seconds: number}))
     case "m":
+    case "minute":
+    case "minutes":
       return String(milliseconds({minutes: number}))
     case "h":
+    case "hour":
+    case "hours":
       return String(milliseconds({hours: number}))
     default:
       return String(0)
@@ -531,4 +480,37 @@ function convertMillisecondsToSimplifiedTime(number: number): string {
   const readableDuration = formatDuration(duration);
 
   return readableDuration
+}
+
+function validateMeasure(measure: string, type: string): string {
+  if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)))) {
+    console.log(`Invalid number of tests entered "${measure}". Enter in a valid number.`)
+    throw new Error("Invalid number")
+  }
+
+  if (type === "time") {
+    const timeRegex = /^(\d+)\s*(\w+)/
+    const captureGroups = timeRegex.exec(measure)
+    if (!captureGroups) {
+      console.log(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
+      throw new Error("Invalid time")
+    }
+    
+    const number = captureGroups[1]
+    const duration = captureGroups[2]
+    
+    if (!validTimeDurations.has(duration)) {
+      console.log(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
+      throw new Error("Invalid time duration")
+    }
+
+    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
+      console.log(`Invalid time of tests entered "${measure}". Enter in a valid number.`)
+      throw new Error("Invalid number")
+    }
+
+    measure = convertTimeToMilliseconds(Number(number), duration)
+  }
+
+  return measure
 }
