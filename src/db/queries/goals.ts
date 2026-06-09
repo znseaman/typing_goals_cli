@@ -8,8 +8,8 @@ export type Goal = typeof goals.$inferSelect
 export type GoalWithPresetAndTag = { id: string; name: string; type: "time" | "count", measure: number, presetId: string; presetName: string | null; tagId: string | null; timeframe: string; }
 
 // eslint-disable-next-line max-params
-export async function createGoal(state: State, name: string, type: "time" | "count", measure: number, presetId: string, userId: string, timeframe: string, totalTests: number) {
-  const [result] = await state.db.insert(goals).values({name, type, measure, presetId, timeframe, totalTests, userId}).returning()
+export async function createGoal(state: State, name: string, type: "time" | "count", measure: number, presetId: string, userId: string, timeframe: string) {
+  const [result] = await state.db.insert(goals).values({name, type, measure, presetId, timeframe, userId}).returning()
   return result
 }
 

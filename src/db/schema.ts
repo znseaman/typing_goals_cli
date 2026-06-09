@@ -64,7 +64,6 @@ export const goals = pgTable('goals', {
     .references(() => presets.id, {onDelete: 'cascade'})
     .notNull(),
   timeframe: text('timeframe').notNull(),
-  totalTests: integer('total_tests').notNull(),
   updatedAt: timestamp('updated_at')
     .notNull()
     .defaultNow()
