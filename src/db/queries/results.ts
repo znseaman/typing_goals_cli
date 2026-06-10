@@ -1,18 +1,20 @@
 import type { State } from "../../state.js"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 
 import { results } from '../schema.js'
 import { ResultResponse } from "../../monkeytype.js"
 
 export type Result = typeof results.$inferSelect
 
-export async function createResult(state: State, id: string, fullDetails: ResultResponse, userId: string) {
+export async function createResult(state: State, id: string, fullDetails: ResultResponse) {
+  const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(results).values({fullDetails, id, userId}).returning()
   return result
 }
 
 export async function getResultById(state: State, id: string) {
-  const [result] = await state.db.select().from(results).where(eq(results.id, id))
+  const userId = String(state.config.get("localId"))
+  const [result] = await state.db.select().from(results).where(and(eq(results.userId, userId), eq(results.id, id)))
   return result
 }
 

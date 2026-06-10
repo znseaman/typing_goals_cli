@@ -2,52 +2,12 @@ import type { State } from "../state.js"
 import { isTokenValid, createRequestOptions, setConfig } from "../config.js"
 import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../monkeytype.js"
 import { getTags, TagObject } from "../db/queries/tags.js";
-import { getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
-import { convertMillisecondsToSimplifiedTime } from "./goals.js";
+import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
+import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
-  // Bypass if under expires in
-  if (!isTokenValid(state.config)) {
-    // Try to refresh their token using refresh token
-    const token = String(state.config.get('refreshToken') || "")
-    if (!token) {
-      console.log(`\nType 'login' to reconnect.\n`);
-      return
-    }
-
-    try {
-      const response = await refreshToken(token)
-      
-      const data = {
-        "idToken": response.id_token,
-        "expiresIn": response.expires_in,
-        "refreshToken": response.refresh_token,
-      }
-
-      setConfig(data, state.config)
-    } catch {
-      console.log(`\nType 'login' to reconnect.\n`);
-      return
-    }
-  }
-
-  const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
-
-  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, String(state.config.get("localId")), startOfTodayUTC)
-
-  const lastResultTimeStamp = onlyToday.at(-1)?.timestamp || startOfTodayUTC
-
-  let response
-  try {
-    const requestOptions = createRequestOptions(state.config, 'GET')
-    response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(error?.message, {code: JSON.stringify(error), exit: 1})
-    }
-  }
-
-  const allResults = [...(response?.data || []), ...onlyToday]
+  const allResults = await getAllResults(state)
+  if (!allResults) return
 
   const tags: Array<TagObject> = await getTags(state)
   const tagsObj = {} as Record<string, {count: number; name: string}>
@@ -60,6 +20,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
     }
   }
 
+  const startOfTodayUTC = getStartOfTodayUTC()
   console.log(`\nToday's Results (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
   printResultsTable(allResults, tagsObj)
 
@@ -127,7 +88,7 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
     }
   }
 
-  const startOfTodayUTC = Number(new Date(new Date().toISOString().split("T")[0]))
+  const startOfTodayUTC = getStartOfTodayUTC()
 
   // get previous results from config for now
   const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, String(state.config.get("localId")), startOfTodayUTC)
@@ -140,11 +101,25 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
     response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error?.message, {code: JSON.stringify(error), exit: 1})
+      console.error(error?.message)
+      return;
     }
   }
 
-  const allResults = [...onlyToday, ...(response?.data || [])]
+  const allResults = [...onlyToday];
+  for (const result of response?.data || []) {
+    try {
+      let exists = await getResultById(state, result._id)
+      if (exists) continue
+    } catch (error) {
+      continue
+    }
+
+    const saved = await createResult(state, result._id, result)
+    if (saved) {
+      allResults.push(result);
+    }
+  }
 
   return allResults
 }

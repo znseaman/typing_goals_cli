@@ -6,7 +6,7 @@ import { bannedPresetOptions } from "./presets.js";
 import { getPresets, PresetObject } from "../db/queries/presets.js";
 import { getTags, TagObject } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
-import { intervalToDuration, formatDuration, milliseconds } from 'date-fns';
+import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
 
 type GoalsObject = Record<string, {
   count: number,
@@ -32,8 +32,6 @@ export const defaultGoalOptions = {
     time: "5m",
   }
 }
-
-const validTimeDurations = new Set(["ms", "s", "m", "h", "millisecond", "milliseconds", "second", "seconds", "minute", "minutes", "hour", "hours"])
 
 export async function commandGoals(state: State, args?: string[]): Promise<void> {
   
@@ -412,7 +410,7 @@ export function printGoalsTable(
   goalsObj: GoalsObject,
   verbose?: boolean
 ) {
-  const startOfTodayUTC = Number(new Date(new Date().toISOString().split('T')[0]))
+  const startOfTodayUTC = getStartOfTodayUTC()
   console.log(`\nToday's Goals (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
 
   const objects = []
@@ -513,37 +511,6 @@ export function printGoalsTable(
     totalSeconds += goalsObj[key].totalSeconds
   }
   console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
-}
-
-function convertTimeToMilliseconds(number: number, duration: string): string {
-  switch (duration) {
-    case "ms":
-    case "millisecond":
-    case "milliseconds":
-      return String(number)
-    case "s":
-    case "second":
-    case "seconds":
-      return String(milliseconds({seconds: number}))
-    case "m":
-    case "minute":
-    case "minutes":
-      return String(milliseconds({minutes: number}))
-    case "h":
-    case "hour":
-    case "hours":
-      return String(milliseconds({hours: number}))
-    default:
-      return String(0)
-  }
-}
-
-export function convertMillisecondsToSimplifiedTime(number: number): string {
-  const duration = intervalToDuration({ start: 0, end: number });
-
-  const readableDuration = formatDuration(duration);
-
-  return readableDuration
 }
 
 function validateMeasure(measure: string, type: string): string {
