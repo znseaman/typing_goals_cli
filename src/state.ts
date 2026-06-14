@@ -8,6 +8,7 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { initializeDB } from "./db/index.js"
 import { Pool } from "pg";
 import 'dotenv/config'
+import goals, { GoalsQueries } from "./db/queries/goals.js"
 
 export type CLICommand = {
   name: string;
@@ -26,7 +27,9 @@ export type State = {
   monkeytype: MonkeyType,
   config: Conf,
   stopFullExit: boolean,
-  commandHistory: string[]
+  commandHistory: string[],
+  removeReadline_runNonReadline_addReadline: (state: State, handler: () => Promise<void>) => void,
+  goalsQueries: GoalsQueries,
 }
 
 export async function initializeState(): Promise<State> {
@@ -43,6 +46,8 @@ export async function initializeState(): Promise<State> {
 
   const readline = initializeReadline(getFullCommandList(commands), commandHistory)
 
+  const goalsQueries = goals
+
   return {
     db,
     readline,
@@ -51,6 +56,8 @@ export async function initializeState(): Promise<State> {
     config,
     stopFullExit: false,
     commandHistory,
+    removeReadline_runNonReadline_addReadline,
+    goalsQueries
   }
 }
 
@@ -96,13 +103,25 @@ export function initializeReadlineHandlers(state: State): void {
   })
 }
 
-// A control mechanism given only one readline can exist
-// This solves for wanting to use another "readline"-like package but Node.js having limitations with readline
-export async function removeReadline_runNonReadline_addReadline(state: State, handler: () => Promise<void>) {
+export async function addReadline(state: State) {
+  // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
+  state.stopFullExit = false
+  // Re-create the previous readline and attach the necessary state to it
+  state.readline = initializeReadline(getFullCommandList(state.commands), state.commandHistory)
+  initializeReadlineHandlers(state)
+}
+
+export async function removeReadline(state: State) {
   // Workaround to prevent natural readline from fully exiting the readline interface on close
   state.stopFullExit = true
   // Close down the previous readline to make way for enquirer's readline
   state.readline.close()
+}
+
+// A control mechanism given only one readline can exist
+// This solves for wanting to use another "readline"-like package but Node.js having limitations with readline
+export async function removeReadline_runNonReadline_addReadline(state: State, handler: () => Promise<void>) {
+  removeReadline(state)
   
   try {
     await handler()
@@ -111,11 +130,7 @@ export async function removeReadline_runNonReadline_addReadline(state: State, ha
       console.log(`An error occurred: ${error}. Please try again.`)
     }
   } finally {
-    // Done working with enquirer so we can allow for the native readline interface to close and do extra closing steps
-    state.stopFullExit = false
-    // Re-create the previous readline and attach the necessary state to it
-    state.readline = initializeReadline(getFullCommandList(state.commands), state.commandHistory)
-    initializeReadlineHandlers(state)
+    addReadline(state)
   }
 }
 

@@ -28,7 +28,7 @@ headers.append(
 )
 headers.append("Content-Type", "application/json")
 
-function getBody(email: string, password: string) {
+export function getBody(email: string, password: string) {
   return JSON.stringify({
     clientType: "CLIENT_TYPE_WEB",
     email,
@@ -234,7 +234,7 @@ export async function refreshToken(refreshToken: string): Promise<RefreshTokenRe
 
   const response = await fetch(
     MONKEYTYPE_REFRESH_TOKEN_URL,
-    requestOptions as RequestInit,
+    requestOptions as RequestOptions,
   )
   if (response.status >= 400) {
     throw new Error(
@@ -281,11 +281,11 @@ export interface ResultResponse {
   wpm: number
 }
 
-export async function getResults(offset = 0, limit = 1000, requestOptions: {headers: Headers; method: string}, lastResultTimeStamp: number): Promise<ResultsResponse> {
+export async function getResults(offset = 0, limit = 1000, requestOptions: {headers: Headers; method: string}, lastResultTimestamp: number): Promise<ResultsResponse> {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
-    onOrAfterTimestamp: String(lastResultTimeStamp + 1), // on or after
+    onOrAfterTimestamp: String(lastResultTimestamp + 1), // on or after
   })
 
   const response = await fetch(

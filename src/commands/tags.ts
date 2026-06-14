@@ -22,7 +22,7 @@ export async function commandTags(state: State, args?: string[]): Promise<void> 
         }
         return
       default:
-        console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
+        console.error(`Unknown subcommand: ${command}. Supported subcommands: delete`)
         return
     }
   }

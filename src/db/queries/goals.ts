@@ -7,6 +7,10 @@ export type Goal = typeof goals.$inferSelect
 
 export type GoalWithPresetAndTag = { id: string; name: string; type: "time" | "count", measure: number, presetId: string; presetName: string | null; tagId: string | null; timeframe: string; }
 
+export type GoalsQueries = {
+  getGoalsByUserId: (state: State, userId: string) => Promise<Array<GoalWithPresetAndTag>>,
+}
+
 // eslint-disable-next-line max-params
 export async function createGoal(state: State, name: string, type: "time" | "count", measure: number, presetId: string, userId: string, timeframe: string) {
   const [result] = await state.db.insert(goals).values({name, type, measure, presetId, timeframe, userId}).returning()
@@ -35,3 +39,7 @@ export async function editGoalById(state: State, id: string, userId: string, toS
   const [result] = await state.db.update(goals).set(toSet).where(and(eq(goals.id, id), eq(goals.userId, userId))).returning({ name: goals.name })
   return result
 }
+
+export default {
+  getGoalsByUserId,
+} as GoalsQueries

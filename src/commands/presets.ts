@@ -24,7 +24,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
         }
         return
       default:
-        console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
+        console.error(`Unknown subcommand: ${command}. Supported subcommands: delete`)
         return
     }
   }

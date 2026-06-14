@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   server: {
@@ -9,8 +9,11 @@ export default defineConfig({
     }
   },
   test: {
+    exclude: [...configDefaults.exclude, "**/*.js"],
     coverage: {
+      provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
+      exclude: [...configDefaults.exclude, "**/*.js"]
     },
   },
 });

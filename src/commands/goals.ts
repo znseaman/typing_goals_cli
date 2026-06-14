@@ -54,9 +54,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       const verbose = isVerbose === "-v" ? true : false
 
       // list current goals
-      const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+      const goals = await state.goalsQueries.getGoalsByUserId(state, String(state.config.get("localId")))
 
-      if (!goals.length) {
+      if (!goals?.length) {
         console.log(`\nNo goals created yet. Type "goals create" to create a goal.\n`)
         return
       }
@@ -70,9 +70,19 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         const tags: Array<TagObject> = await getTags(state)
         const goalsObj = {} as GoalsObject
         
+        if (!tags?.length) {
+          console.log(`\nNo tags for this user in the database. Type "tags" to fetch tags for this user.\n`)
+          return
+        }
+
+        if (!presets?.length) {
+          console.log(`\nNo presets for this user in the database. Type "presets" to fetch presets for this user.\n`)
+          return
+        }
+
         for (const goal of goals) {
-          let associatedTag = tags.find((tag) => tag._id == goal.tagId as string)
-          let associatedPreset = presets.find((preset) => preset._id == goal.presetId)
+          let associatedTag = tags?.find((tag) => tag._id == goal.tagId as string)
+          let associatedPreset = presets?.find((preset) => preset._id == goal.presetId)
           if (associatedTag && associatedPreset) {
             const presetConfig = JSON.parse(associatedPreset?.config || "") as PresetConfig
             const tagPersonalBests = JSON.parse(associatedTag?.personalBests || "") as PersonalBests
@@ -513,11 +523,12 @@ export function printGoalsTable(
   console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
 }
 
-function validateMeasure(measure: string, type: string): string {
+export function validateMeasure(measure: string, type: string): string {
   if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)) || Number(measure) === 0)) {
     console.log(`\nInvalid number of tests entered "${measure}". Enter in a valid number greater than 0.\n`)
     throw new Error("Invalid number")
   }
+  
 
   if (type === "time") {
     const timeRegex = /^(\d+)\s*(\w+)/
@@ -529,13 +540,13 @@ function validateMeasure(measure: string, type: string): string {
     
     const number = captureGroups[1]
     const duration = captureGroups[2]
-    
+
     if (!validTimeDurations.has(duration)) {
       console.log(`\nInvalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).\n`)
       throw new Error("Invalid time duration")
     }
 
-    if (type === "time" && (Number.isNaN(Number(number)) || !Number.isFinite(Number(number)))) {
+    if (type === "time" && (Number.isNaN(Number(number)) || Number(number) === 0)) {
       console.log(`\nInvalid time of tests entered "${measure}". Enter in a valid number.\n`)
       throw new Error("Invalid number")
     }

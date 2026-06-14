@@ -1,6 +1,7 @@
 node_modules
 dist
 .env
+coverage
 NOTES.md
 
 # ignore exit.test.ts until process.exit is mocked
