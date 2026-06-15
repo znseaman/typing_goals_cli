@@ -1,12 +1,12 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { emojiForPresetConfigOption, PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
-import { bannedPresetOptions } from "./presets.js";
+import { PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
 import { getPresets, PresetObject } from "../db/queries/presets.js";
 import { getTags, TagObject } from "../db/queries/tags.js";
 import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
+import { logger } from "../ui/logger.js";
 
 type GoalsObject = Record<string, {
   count: number,
@@ -57,7 +57,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       const goals = await state.goalsQueries.getGoalsByUserId(state, String(state.config.get("localId")))
 
       if (!goals?.length) {
-        console.log(`\nNo goals created yet. Type "goals create" to create a goal.\n`)
+        logger.error(`No goals created yet. Type "goals create" to create a goal.`)
         return
       }
 
@@ -71,12 +71,12 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         const goalsObj = {} as GoalsObject
         
         if (!tags?.length) {
-          console.log(`\nNo tags for this user in the database. Type "tags" to fetch tags for this user.\n`)
+          logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
           return
         }
 
         if (!presets?.length) {
-          console.log(`\nNo presets for this user in the database. Type "presets" to fetch presets for this user.\n`)
+          logger.error(`No presets for this user in the database. Type "presets" to fetch presets for this user.`)
           return
         }
 
@@ -125,7 +125,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
         printGoalsTable(goals, goalsObj, verbose)
       } catch (error) {
-        console.log(`An error occurred in listing goals. Please try again.`)
+        logger.error(`An error occurred in listing goals. Please try again.`)
         console.error((error as Error)?.stack, {code: JSON.stringify(error, null, 2)})
       }
       break;
@@ -170,7 +170,7 @@ export function printGoals(
   string += `- Time Spent Typing Today: ${Math.round(totalSeconds / 60)} minutes \n`
   string += `\nTo complete the rest of your planned typing goals for today, go to MonkeyType, select your preset associated with your goal (Shift+⌘+P + Presets + PRESET_NAME), and get to typing!\n`
 
-  console.log(string)
+  logger.info(string)
 }
 
 async function create(state: State, args?: string[]) {
@@ -184,13 +184,13 @@ async function create(state: State, args?: string[]) {
   while (!name || !validatedName) {
     if (!name) name = await read({prompt: "Enter goal name: "});
     if (name === "") {
-      console.log("\nPlease enter a valid goal name.\n")
+      logger.error("\nPlease enter a valid goal name.\n")
       continue
     }
     
     let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
     if (existingGoal) {
-      console.log("\nGoal already exists. Please enter another goal name.\n")
+      logger.error("\nGoal already exists. Please enter another goal name.\n")
       name = ""
       continue
     }
@@ -239,12 +239,12 @@ async function create(state: State, args?: string[]) {
     }
 
     if (!presetId) {
-      console.log(`\nThere is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.\n`)
+      logger.error(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.\n`)
       presetName = ""
       continue
     }
     if (!tagId) {
-      console.log(`\nThere is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.\n`)
+      logger.error(`There is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.\n`)
       presetName = ""
       continue
     }
@@ -252,7 +252,7 @@ async function create(state: State, args?: string[]) {
     // does the new preset name already have a goal that it's associated with?
     let matchingGoal = goals.find((goal) => goal.presetName === presetName)
     if (matchingGoal) {
-      console.log(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
+      logger.error(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
       presetName = ""
       continue
     }
@@ -262,7 +262,7 @@ async function create(state: State, args?: string[]) {
 
   const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
 
-  console.log(`\nSuccessfully created a new goal named "${goal.name}"\n`)
+  logger.success(`Successfully created a new goal named "${goal.name}"`)
 }
 
 async function editGoal(state: State, args?: string[]) {
@@ -276,13 +276,13 @@ async function editGoal(state: State, args?: string[]) {
   while (!existingGoal) {
     if (!name) name = await read({prompt: "Enter goal name to edit: ", completer: createCompleter(goals.map((goal) => goal.name))});
     if (name === "") {
-      console.log("\nPlease enter a valid goal name.\n")
+      logger.error("Please enter a valid goal name.")
       continue
     }
 
     existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
     if (!existingGoal) {
-      console.log(`\nThere is no goal "${name}" associated with this account. Enter another goal name.\n`)
+      logger.error(`There is no goal "${name}" associated with this account. Enter another goal name.`)
       name = ""
       continue
     }
@@ -293,14 +293,14 @@ async function editGoal(state: State, args?: string[]) {
   while (noExistingGoal) {
     newName = await read({prompt: "Enter the new goal name: ", default: name});
     if (newName === "") {
-      console.log("\nPlease enter a new valid goal name.\n")
+      logger.error("Please enter a new valid goal name.")
       continue
     }
 
     if (newName !== name) {
       noExistingGoal = await getGoalByName(state, newName, String(state.config.get("localId")))
       if (noExistingGoal) {
-        console.log(`\nThere is already a goal "${newName}" associated with this account. Enter a different new goal name.\n`)
+        logger.error(`There is already a goal "${newName}" associated with this account. Enter a different new goal name.`)
         newName = ""
         continue
       }
@@ -351,12 +351,12 @@ async function editGoal(state: State, args?: string[]) {
     }
 
     if (!presetId) {
-      console.log(`\nThere is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.\n`)
+      logger.error(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
       presetName = ""
       continue
     }
     if (!tagId) {
-      console.log(`\nThere is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.\n`)
+      logger.error(`There is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
       presetName = ""
       continue
     }
@@ -366,7 +366,7 @@ async function editGoal(state: State, args?: string[]) {
       // does the new preset name already have a goal that it's associated with?
       let matchingGoal = goals.find((goal) => goal.presetName === presetName)
       if (matchingGoal) {
-        console.log(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
+        logger.error(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
         presetName = ""
         continue
       }
@@ -384,7 +384,7 @@ async function editGoal(state: State, args?: string[]) {
   // @ts-ignore
   const goal = await editGoalById(state, (existingGoal as GoalWithPresetAndTag).id, String(state.config.get("localId")), toSet)
 
-  console.log(`\nSuccessfully edited the goal named "${goal.name}"\n`)
+  logger.success(`Successfully edited the goal named "${goal.name}"`)
 }
 
 async function deleteGoal(state: State, args?: string[]) {
@@ -396,13 +396,13 @@ async function deleteGoal(state: State, args?: string[]) {
   while (!name || !validatedName) {
     if (!name) name = await read({prompt: "Enter goal name to delete: ", completer: createCompleter(goals.map((goal) => goal.name))});
     if (name === "") {
-      console.log("\nPlease enter a valid goal name.\n")
+      logger.error("\nPlease enter a valid goal name.\n")
       continue
     }
 
     let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
     if (!existingGoal) {
-      console.log(`\nThere is no goal "${name}" associated with this account. Please enter another goal name.\n`)
+      logger.error(`\nThere is no goal "${name}" associated with this account. Please enter another goal name.\n`)
       name = ""
       continue
     }
@@ -412,7 +412,7 @@ async function deleteGoal(state: State, args?: string[]) {
 
   let goal = await deleteGoalByName(state, name, String(state.config.get("localId")))
 
-  console.log(`\nSuccessfully deleted the goal named "${goal.name}"\n`)
+  logger.success(`Successfully deleted the goal named "${goal.name}"`)
 }
 
 export function printGoalsTable(
@@ -455,51 +455,6 @@ export function printGoalsTable(
         "preset name": goalObject?.name,
         "🏆 pb": goalObject?.pb || 'N/A',
         "pb date": goalObject?.pbTimestamp ? new Date(goalObject.pbTimestamp).toLocaleString() : 'N/A',
-        [`${emojiForPresetConfigOption["language"]}`]: `${presetConfig?.language}`,
-        "mode": `${mode} ${modeNumber}`,
-        [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: presetConfig?.minWpmCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["minAccCustom"]}`]: presetConfig?.minAccCustom || 0,
-        [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: presetConfig?.minBurstCustomSpeed || 0,
-        [`${emojiForPresetConfigOption["blindMode"]}`]: presetConfig?.blindMode || false,
-        "extra preset options": presetConfig ? Object.entries(presetConfig).reduce((acc, [key, value]) => {
-          if (bannedPresetOptions.includes(key)) return acc
-
-          // suppress as they have their own columns now
-          if (key === "language" || key === "mode" || key === mode || key === "minWpmCustomSpeed" || key === "minAccCustom" || key === "minBurstCustomSpeed" || key === "blindMode") {
-            return acc
-          }
-
-          // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
-          if ((key === "minWpm" || key === "minAcc") && (value === "custom" || value === "off")) {
-            return acc
-          }
-
-          // hide minBurstCustomSpeed and minBurst when minBurst is off
-          if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && presetConfig?.minBurst === "off") {
-            return acc
-          }
-
-          // suppress when "words" is 0
-          if (key === "words" && value === 0) {
-            return acc
-          }
-
-          // suppress when "time" is 0
-          if (key === "time" && value === 0) {
-            return acc
-          }
-
-          // suppress when "difficulty" is "normal"
-          if (key === "difficulty" && value === "normal") return acc
-
-          // suppress when "oppositeShiftMode" or "confidenceMode" is "off"
-          if ((key === "oppositeShiftMode" || key === "confidenceMode") && value === "off") return acc
-
-          const emoji: string = key == "difficulty" ? emojiForPresetConfigOption[key][value as string] || "" : emojiForPresetConfigOption[key] || ""
-          const suppressValue = (key == "blindMode" || key == "confidenceMode" || key == "oppositeShiftMode")
-          acc.push(`${emoji ? emoji : `${key}:`}${suppressValue ? "" : ` ${value}`}`)
-          return acc
-        }, [] as string[]).join(`, `) : 'N/A',
       }
     }
     objects.push({
@@ -520,12 +475,12 @@ export function printGoalsTable(
   for (const [key, _] of Object.entries(goalsObj)) {
     totalSeconds += goalsObj[key].totalSeconds
   }
-  console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
+  logger.info(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
 }
 
 export function validateMeasure(measure: string, type: string): string {
   if (type === "count" && (Number.isNaN(Number(measure)) || !Number.isFinite(Number(measure)) || Number(measure) === 0)) {
-    console.log(`\nInvalid number of tests entered "${measure}". Enter in a valid number greater than 0.\n`)
+    logger.error(`Invalid number of tests entered "${measure}". Enter in a valid number greater than 0.`)
     throw new Error("Invalid number")
   }
   
@@ -534,7 +489,7 @@ export function validateMeasure(measure: string, type: string): string {
     const timeRegex = /^(\d+)\s*(\w+)/
     const captureGroups = timeRegex.exec(measure)
     if (!captureGroups) {
-      console.log(`\nInvalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).\n`)
+      logger.error(`Invalid time of "${measure}" entered. Enter in a valid time (i.e. 10ms, 10s, 1m, 1h).`)
       throw new Error("Invalid time")
     }
     
@@ -542,12 +497,12 @@ export function validateMeasure(measure: string, type: string): string {
     const duration = captureGroups[2]
 
     if (!validTimeDurations.has(duration)) {
-      console.log(`\nInvalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).\n`)
+      logger.error(`Invalid time duration of "${duration}" entered. Enter in a valid time duration (i.e. ms, s, m, h).`)
       throw new Error("Invalid time duration")
     }
 
     if (type === "time" && (Number.isNaN(Number(number)) || Number(number) === 0)) {
-      console.log(`\nInvalid time of tests entered "${measure}". Enter in a valid number.\n`)
+      logger.error(`Invalid time of tests entered "${measure}". Enter in a valid number.`)
       throw new Error("Invalid number")
     }
 
@@ -570,7 +525,7 @@ async function validateType(state: State, type: string, def: string, editing: bo
   while (!type || !validated) {
     type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
     if (type !== "time" && type !== "count") {
-      console.log(`\nThere is no goal type, "${type}". Enter in either "time" or "count" as a goal type\n`)
+      logger.error(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
       type = ""
       continue
     }

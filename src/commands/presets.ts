@@ -1,6 +1,6 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
 import { createRequestOptions } from "../config.js"
-import { PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
+import { emojiForPresetConfigOption, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { createPreset, deletePresets, getPresetById } from "../db/queries/presets.js"
 import { read } from "read"
 import { createTag, getTagById } from "../db/queries/tags.js"
@@ -48,7 +48,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
           const saved = await createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
           if (saved) {
-            console.debug(`db:createTag - ${saved.id} - ${saved.name}`)
+            console.debug(` db:createTag - ${saved.id} - ${saved.name}`)
           }
         } catch (error) {
           if (error instanceof Error) {
@@ -109,22 +109,103 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
 
-      let string = `\nYour Presets:\n`
+      const objects = []
+      console.log(`\nYour Presets:`)
       for (let preset of presets.data) {
-        string += `- ${preset.name}\n`
+        let presetConfig = preset?.config
+        let mode = presetConfig?.mode
+        let modeNumber = Number(presetConfig?.words || presetConfig?.time || "")
+      
+        objects.push({
+          name: preset.name,
+          tags: `${tags?.data.reduce((acc, curr) => {
+            if (curr._id !== presetConfig.tags?.join('')) {
+              return acc
+            }
+            acc.push(curr.name)
+            return acc
+          },[] as string[]).join('')}`,
+          [`${emojiForPresetConfigOption["language"]}`]: `${presetConfig?.language}`,
+          "mode": `${mode} ${modeNumber}`,
+          [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: presetConfig?.minWpmCustomSpeed || 0,
+          [`${emojiForPresetConfigOption["minAccCustom"]}`]: presetConfig?.minAccCustom || 0,
+          [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: presetConfig?.minBurstCustomSpeed || 0,
+          [`${emojiForPresetConfigOption["blindMode"]}`]: presetConfig?.blindMode || false,
+          "extra preset options": presetConfig ? Object.entries(presetConfig).reduce((acc, [key, value]) => {
+            if (bannedPresetOptions.includes(key)) return acc
+  
+            // suppress as they have their own columns now
+            if (key === "language" || key === "mode" || key === mode || key === "minWpmCustomSpeed" || key === "minAccCustom" || key === "minBurstCustomSpeed" || key === "blindMode") {
+              return acc
+            }
+  
+            // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
+            if ((key === "minWpm" || key === "minAcc") && (value === "custom" || value === "off")) {
+              return acc
+            }
+  
+            // hide minBurstCustomSpeed and minBurst when minBurst is off
+            if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && presetConfig?.minBurst === "off") {
+              return acc
+            }
+  
+            // suppress when "words" is 0
+            if (key === "words" && value === 0) {
+              return acc
+            }
+  
+            // suppress when "time" is 0
+            if (key === "time" && value === 0) {
+              return acc
+            }
+  
+            // suppress when "difficulty" is "normal"
+            if (key === "difficulty" && value === "normal") return acc
+  
+            // suppress when "oppositeShiftMode" or "confidenceMode" is "off"
+            if ((key === "oppositeShiftMode" || key === "confidenceMode") && value === "off") return acc
+  
+            const emoji: string = key == "difficulty" ? emojiForPresetConfigOption[key][value as string] || "" : emojiForPresetConfigOption[key] || ""
+            const suppressValue = (key == "blindMode" || key == "confidenceMode" || key == "oppositeShiftMode")
+            acc.push(`${emoji ? emoji : `${key}:`}${suppressValue ? "" : ` ${value}`}`)
+            return acc
+          }, [] as string[]).join(`, `) : 'N/A',
+        })
       }
-      console.log(string)
+
+      console.table(objects, Object.keys(objects?.[0] || {}))
     }
 
     if (printTags) {
       // sort names alphabetically
       tags.data.sort((a: TagResponse, b: TagResponse) => a.name.localeCompare(b.name))
 
-      let string = `\nYour Tags:\n`
+      const objects = []
+      console.log(`\nYour Tags:`)
       for (let tag of tags.data) {
-        string += `- ${tag.name}\n`
+        let preset = presets?.data.find((preset) => preset?.config?.tags?.join('') === tag._id)
+        let presetConfig = preset?.config
+        let mode = presetConfig?.mode
+        let mode2 = Number(presetConfig?.words || presetConfig?.time || "")
+        let tagPersonalBests = tag?.personalBests
+
+        objects.push({
+          name: tag.name,
+          preset: `${presets?.data.reduce((acc, curr) => {
+            if (tag._id !== curr?.config?.tags?.join('')) {
+              return acc
+            }
+            acc.push(curr.name)
+            return acc
+          },[] as string[]).join('')}`,
+          // @ts-ignore
+          "🏆 pb": (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
+          // @ts-ignore
+          "pb date": (!mode || !mode2) ? "N/A" : new Date(tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp).toLocaleString(),
+        })
       }
-      console.log(string)
+
+      console.table(objects, Object.keys(objects?.[0] || {}))
     }
   } catch (error) {
     console.error(`Failed to fetch presets: ${(error as Error).message}`)

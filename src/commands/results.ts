@@ -4,6 +4,7 @@ import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../mo
 import { getTags, TagObject } from "../db/queries/tags.js";
 import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
 import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
+import { logger } from "../ui/logger.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
   const allResults = await getAllResults(state)
@@ -31,7 +32,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
       totalSeconds += result.incompleteTestSeconds
     }
   }
-  console.log(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
+  logger.info(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
 }
 
 export function printResultsTable(
@@ -39,7 +40,7 @@ export function printResultsTable(
   tagsObj: Record<string, {count: number; name: string}>,
 ) {
   if (!results.length) {
-    console.log(`No results to display yet! Take a test to see your results here.\n`)
+    logger.info(`No results to display yet! Take a test to see your results here.\n`)
     return
   }
 
@@ -76,8 +77,8 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
     response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error?.message)
-      return;
+      logger.error(error?.message)
+      return
     }
   }
 

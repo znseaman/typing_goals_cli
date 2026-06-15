@@ -20,6 +20,7 @@ describe("login", () => {
   ('login($email, $password) -> $expected', async ({email, password, expected}) => {
 
     // Here we tell Vitest to mock fetch on the `window` object.
+    // @ts-ignore
     global.fetch = vi.fn(() =>
       Promise.resolve({
         json: () => Promise.resolve(expected),
@@ -48,6 +49,7 @@ describe("getPresets", () => {
   ('getPresets() -> $expected', async ({ status, statusText, expected }) => {
 
     // Here we tell Vitest to mock fetch on the `window` object.
+    // @ts-ignore
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: () => Promise.resolve(status),
@@ -102,6 +104,7 @@ describe("getTags", () => {
   ('getTags() -> $expected', async ({ status, statusText, expected }) => {
 
     // Here we tell Vitest to mock fetch on the `window` object.
+    // @ts-ignore
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: () => Promise.resolve(status),
@@ -156,6 +159,7 @@ describe("getResults", () => {
   ('getResults($offset, $limit, requestOptions) -> $expected', async ({ offset, limit, lastResultTimeStamp, status, statusText, expected }) => {
 
     // Here we tell Vitest to mock fetch on the `window` object.
+    // @ts-ignore
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: () => Promise.resolve(status),
@@ -210,6 +214,7 @@ describe("refreshToken", () => {
   ('refreshToken($refreshToken) -> $expected', async ({ token, status, statusText, expected }) => {
 
     // Here we tell Vitest to mock fetch on the `window` object.
+    // @ts-ignore
     global.fetch = vi.fn(() =>
       Promise.resolve({
         status: () => Promise.resolve(status),

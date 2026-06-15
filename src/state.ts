@@ -9,6 +9,7 @@ import { initializeDB } from "./db/index.js"
 import { Pool } from "pg";
 import 'dotenv/config'
 import goals, { GoalsQueries } from "./db/queries/goals.js"
+import { logger } from "./ui/logger.js";
 
 export type CLICommand = {
   name: string;
@@ -84,7 +85,7 @@ export function initializeReadlineHandlers(state: State): void {
       // Try to refresh their token using refresh token
       const token = String(state.config.get("refreshToken") || "")
       if (!token) {
-        console.log(`\nType "login" to reconnect.\n`)
+        logger.info(`\nType "login" to reconnect.\n`)
         return
       }
   
@@ -99,7 +100,7 @@ export function initializeReadlineHandlers(state: State): void {
   
         setConfig(data, state.config)
       } catch {
-        console.log(`\nType "login" to reconnect.\n`)
+        logger.info(`\nType "login" to reconnect.\n`)
         return
       }
     }
@@ -114,10 +115,10 @@ export function initializeReadlineHandlers(state: State): void {
       try {
         await command.execute(state, args);
       } catch (error) {
-        console.error(`Error executing command '${commandName}':`, error);
+        logger.error(`Error executing command "${commandName}": ${error}`);
       }
     } else {
-      console.log(`\nUnknown command: '${commandName}'. Type 'help' for a list of commands.\n`);
+      logger.warn(`\nUnknown command: '${commandName}'. Type 'help' for a list of commands.\n`);
     }
 
     state.readline.prompt();
@@ -152,7 +153,7 @@ export async function removeReadline_runNonReadline_addReadline(state: State, ha
     await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
-      console.log(`An error occurred: ${error}. Please try again.`)
+      logger.error(`An error occurred: ${error}. Please try again.`)
     }
   } finally {
     addReadline(state)

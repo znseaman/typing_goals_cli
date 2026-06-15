@@ -25,15 +25,15 @@ export async function getResultsByUserId(state: State, userId: string) {
 export async function getResultsByUserIdAndAfterTimestamp(state: State, userId: string, timestamp: number) {
   const result = await state.db.select({fullDetails: results.fullDetails}).from(results).where(eq(results.userId, userId))
 
-  if (result.length === 0) return []
+  if (!Array.isArray(result)) return []
 
-  return result.map(({fullDetails}) => fullDetails as ResultResponse).filter((o) => o.timestamp >= timestamp)
+  return result?.map(({fullDetails}) => fullDetails as ResultResponse).filter((o) => o.timestamp >= timestamp)
 }
 
 export async function getResultsByUserIdAndAfterTimestampAndTagId(state: State, userId: string, timestamp: number, tagId: string) {
   const result = await state.db.select({fullDetails: results.fullDetails}).from(results).where(eq(results.userId, userId))
 
-  if (result.length === 0) return []
+  if (!Array.isArray(result)) return []
 
-  return result.map(({fullDetails}) => fullDetails as ResultResponse).filter((o) => o.timestamp >= timestamp && o.tags && o.tags.includes(tagId))
+  return result?.map(({fullDetails}) => fullDetails as ResultResponse).filter((o) => o.timestamp >= timestamp && o.tags && o.tags.includes(tagId))
 }

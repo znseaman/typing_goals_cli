@@ -18,14 +18,12 @@ export async function startREPL(state: State) {
     } else {
       try {
         const response = await refreshToken(token)
-        
-        const data = {
+
+        setConfig({
           "idToken": response.id_token,
           "expiresIn": response.expires_in,
           "refreshToken": response.refresh_token,
-        }
-
-        setConfig(data, state.config)
+        }, state.config)
         console.log(`\nWelcome back, ${displayName}!\n`)
       } catch {
         wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
