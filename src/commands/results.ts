@@ -63,31 +63,6 @@ export function printResultsTable(
 }
 
 export async function getAllResults(state: State): Promise<ResultResponse[] | void>  {
-  // Bypass if under expires in
-  if (!isTokenValid(state.config)) {
-    // Try to refresh their token using refresh token
-    const token = String(state.config.get("refreshToken") || "")
-    if (!token) {
-      console.log(`\nType "login" to reconnect.\n`);
-      return
-    }
-
-    try {
-      const response = await refreshToken(token)
-      
-      const data = {
-        "idToken": response.id_token,
-        "expiresIn": response.expires_in,
-        "refreshToken": response.refresh_token,
-      }
-
-      setConfig(data, state.config)
-    } catch {
-      console.log(`\nType "login" to reconnect.\n`);
-      return
-    }
-  }
-
   const startOfTodayUTC = getStartOfTodayUTC()
 
   // get previous results from config for now

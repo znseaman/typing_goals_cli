@@ -1,9 +1,9 @@
 import { stdin, stdout } from "node:process"
 import { createInterface, type Interface } from "node:readline"
 import { Commands, getCommands } from "./command.js";
-import { MonkeyType, monkeytype } from "./monkeytype.js";
+import { MonkeyType, monkeytype, refreshToken } from "./monkeytype.js";
 import type Conf from "conf";
-import { config } from "./config.js";
+import { config, isTokenValid, setConfig } from "./config.js";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { initializeDB } from "./db/index.js"
 import { Pool } from "pg";
@@ -79,6 +79,31 @@ export function initializeReadline(commandList: Array<string>, history: string[]
 
 export function initializeReadlineHandlers(state: State): void {
   state.readline.on("line", async (line) => {
+    // Bypass if under expires in
+    if (!isTokenValid(state.config)) {
+      // Try to refresh their token using refresh token
+      const token = String(state.config.get("refreshToken") || "")
+      if (!token) {
+        console.log(`\nType "login" to reconnect.\n`)
+        return
+      }
+  
+      try {
+        const response = await refreshToken(token)
+        
+        const data = {
+          "idToken": response.id_token,
+          "expiresIn": response.expires_in,
+          "refreshToken": response.refresh_token,
+        }
+  
+        setConfig(data, state.config)
+      } catch {
+        console.log(`\nType "login" to reconnect.\n`)
+        return
+      }
+    }
+
     const [commandName, ...args] = line.trim().split(/\s+/);
     const command = state.commands[commandName];
 
