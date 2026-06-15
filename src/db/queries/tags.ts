@@ -45,3 +45,9 @@ export async function getTags(state: State): Promise<Array<TagObject>> {
 export async function deleteTags(state: State, userId: string) {
   await state.db.delete(tags).where(eq(tags.userId, userId))
 }
+
+export async function editTagById(state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) {
+  const userId = String(state.config.get("localId"))
+  const [result] = await state.db.update(tags).set(toSet).where(and(eq(tags.id, id), eq(tags.userId, userId))).returning()
+  return result
+}

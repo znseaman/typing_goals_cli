@@ -99,9 +99,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
               goalTotalTime: goal?.measure,
               name: associatedPreset.name,
               // @ts-ignore
-              pb: (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
+              pb: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
               // @ts-ignore
-              pbTimestamp: (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
+              pbTimestamp: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
               failedAttempts: 0,
               totalSeconds: 0,
               presetConfig: presetConfig || {},
@@ -426,7 +426,6 @@ export function printGoalsTable(
   const objects = []
   for (let goal of goals) {
     const goalObject = goalsObj[goal.tagId as string]
-    const presetConfig = goalObject.presetConfig
 
     let toGo
     let status
@@ -446,15 +445,13 @@ export function printGoalsTable(
     let object = {}
 
     if (verbose) {
-      let mode = presetConfig?.mode
-      let modeNumber = Number(presetConfig?.words || presetConfig?.time || "")
       object = {
         "total time": `${convertMillisecondsToSimplifiedTime((goalObject?.totalSeconds || 0) * 1000) || "0 minutes"}`,
         "total tests": goalObject?.count || 0,
         "❌ failed": goalObject?.failedAttempts || 0,
-        "preset name": goalObject?.name,
         "🏆 pb": goalObject?.pb || 'N/A',
         "pb date": goalObject?.pbTimestamp ? new Date(goalObject.pbTimestamp).toLocaleString() : 'N/A',
+        "associated preset": goalObject?.name,
       }
     }
     objects.push({

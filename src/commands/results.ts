@@ -54,7 +54,7 @@ export function printResultsTable(
       consistency: result.consistency,
       chars: `${result.charStats[0]}/${result.charStats[1]}/${result.charStats[2]}/${result.charStats[3]}`,
       mode: `${result.mode} ${result.mode2}`,
-      tags: tags.join(','),
+      "associated tag": tags.join(','),
       date: new Date(result.timestamp).toLocaleString()
     }
     objects.push(object)

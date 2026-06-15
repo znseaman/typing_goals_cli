@@ -1,9 +1,9 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
 import { createRequestOptions } from "../config.js"
 import { emojiForPresetConfigOption, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
-import { createPreset, deletePresets, getPresetById } from "../db/queries/presets.js"
+import { createPreset, deletePresets, editPresetById, getPresetById } from "../db/queries/presets.js"
 import { read } from "read"
-import { createTag, getTagById } from "../db/queries/tags.js"
+import { createTag, editTagById, getTagById } from "../db/queries/tags.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
@@ -44,7 +44,14 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       for await (const tag of tags?.data) {
         try {
           const exists = await getTagById(state, tag._id)
-          if (exists) continue
+          if (exists) {
+            // Update name and fullDetails
+            const updated = await editTagById(state, tag._id, {name: tag.name, fullDetails: tag})
+            if (updated) {
+              console.debug(`db:editTagById - ${updated.id} - ${updated.name}`)
+            }
+            continue
+          }
 
           const saved = await createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
           if (saved) {
@@ -70,7 +77,14 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       for await (const preset of presets?.data) {
         try {
           const exists = await getPresetById(state, preset._id)
-          if (exists) continue
+          if (exists) {
+            // Update name and fullDetails
+            const updated = await editPresetById(state, preset._id, {name: preset.name, fullDetails: preset})
+            if (updated) {
+              console.debug(`db:editPresetById - ${updated.id} - ${updated.name}`)
+            }
+            continue
+          }
 
           // verify that there's only one tag in the preset
           if (preset?.config?.tags?.length != 1) {
@@ -109,22 +123,25 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
 
+      const goals = await state.goalsQueries.getGoalsByUserId(state, String(state.config.get("localId")))
+
       const objects = []
       console.log(`\nYour Presets:`)
       for (let preset of presets.data) {
         let presetConfig = preset?.config
         let mode = presetConfig?.mode
         let modeNumber = Number(presetConfig?.words || presetConfig?.time || "")
+        let goalMatchingPreset = goals.reduce((acc, curr) => {
+          if (curr.presetId !== preset._id) {
+            return acc
+          }
+          acc.push(curr.name)
+          return acc
+        },[] as string[])
       
         objects.push({
           name: preset.name,
-          tags: `${tags?.data.reduce((acc, curr) => {
-            if (curr._id !== presetConfig.tags?.join('')) {
-              return acc
-            }
-            acc.push(curr.name)
-            return acc
-          },[] as string[]).join('')}`,
+          "associated goal": goalMatchingPreset.length > 0 ? `${goalMatchingPreset.join('')}` : "❌",
           [`${emojiForPresetConfigOption["language"]}`]: `${presetConfig?.language}`,
           "mode": `${mode} ${modeNumber}`,
           [`${emojiForPresetConfigOption["minWpmCustomSpeed"]}`]: presetConfig?.minWpmCustomSpeed || 0,
@@ -188,20 +205,22 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         let mode = presetConfig?.mode
         let mode2 = Number(presetConfig?.words || presetConfig?.time || "")
         let tagPersonalBests = tag?.personalBests
+        let tagMatchingPreset = presets?.data.reduce((acc, curr) => {
+          if (tag._id !== curr?.config?.tags?.join('')) {
+            return acc
+          }
+          acc.push(curr.name)
+          return acc
+        },[] as string[])
 
         objects.push({
           name: tag.name,
-          preset: `${presets?.data.reduce((acc, curr) => {
-            if (tag._id !== curr?.config?.tags?.join('')) {
-              return acc
-            }
-            acc.push(curr.name)
-            return acc
-          },[] as string[]).join('')}`,
+          "associated preset": tagMatchingPreset.length > 0 ? `${tagMatchingPreset.join('')}`: "❌",
+          "preset mode": mode ? `${mode} ${mode2}` : "❌",
           // @ts-ignore
-          "🏆 pb": (!mode || !mode2) ? "N/A" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
+          "🏆 pb": (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
           // @ts-ignore
-          "pb date": (!mode || !mode2) ? "N/A" : new Date(tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp).toLocaleString(),
+          "pb date": (!mode || !mode2) ? "❌" : new Date(tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp).toLocaleString(),
         })
       }
 

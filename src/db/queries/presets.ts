@@ -49,3 +49,9 @@ export async function getPresets(state: State): Promise<Array<PresetObject>> {
 export async function deletePresets(state: State, userId: string) {
   await state.db.delete(presets).where(eq(presets.userId, userId))
 }
+
+export async function editPresetById(state: State, id: string, toSet: {name?: string, fullDetails?: PresetResponse}) {
+  const userId = String(state.config.get("localId"))
+  const [result] = await state.db.update(presets).set(toSet).where(and(eq(presets.id, id), eq(presets.userId, userId))).returning()
+  return result
+}
