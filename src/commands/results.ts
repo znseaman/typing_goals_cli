@@ -1,6 +1,6 @@
 import type { State } from "../state.js"
-import { isTokenValid, createRequestOptions, setConfig } from "../config.js"
-import { getResults, ResultsResponse, ResultResponse, refreshToken } from "../monkeytype.js"
+import { createRequestOptions } from "../config.js"
+import { getResults, ResultsResponse, ResultResponse } from "../monkeytype.js"
 import { getTags, TagObject } from "../db/queries/tags.js";
 import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
 import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
@@ -66,8 +66,7 @@ export function printResultsTable(
 export async function getAllResults(state: State): Promise<ResultResponse[] | void>  {
   const startOfTodayUTC = getStartOfTodayUTC()
 
-  // get previous results from config for now
-  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, String(state.config.get("localId")), startOfTodayUTC)
+  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, startOfTodayUTC)
   
   const lastResultTimeStamp = onlyToday.at(-1)?.timestamp || startOfTodayUTC
 
