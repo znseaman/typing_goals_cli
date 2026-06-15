@@ -80,36 +80,38 @@ export function initializeReadline(commandList: Array<string>, history: string[]
 
 export function initializeReadlineHandlers(state: State): void {
   state.readline.on("line", async (line) => {
-    // Bypass if under expires in
-    if (!isTokenValid(state.config)) {
-      // Try to refresh their token using refresh token
-      const token = String(state.config.get("refreshToken") || "")
-      if (!token) {
-        logger.info(`\nType "login" to reconnect.\n`)
-        return
-      }
-  
-      try {
-        const response = await refreshToken(token)
-        
-        const data = {
-          "idToken": response.id_token,
-          "expiresIn": response.expires_in,
-          "refreshToken": response.refresh_token,
-        }
-  
-        setConfig(data, state.config)
-      } catch {
-        logger.info(`\nType "login" to reconnect.\n`)
-        return
-      }
-    }
-
     const [commandName, ...args] = line.trim().split(/\s+/);
     const command = state.commands[commandName];
 
     // add command name to command history
     state.commandHistory.push(commandName)
+
+    if (commandName !== "login") {
+      // Bypass if under expires in
+      if (!isTokenValid(state.config)) {
+        // Try to refresh their token using refresh token
+        const token = String(state.config.get("refreshToken") || "")
+        if (!token) {
+          logger.info(`Type "login" to reconnect.`)
+          return
+        }
+    
+        try {
+          const response = await refreshToken(token)
+          
+          const data = {
+            "idToken": response.id_token,
+            "expiresIn": response.expires_in,
+            "refreshToken": response.refresh_token,
+          }
+    
+          setConfig(data, state.config)
+        } catch {
+          logger.info(`Type "login" to reconnect.`)
+          return
+        }
+      }
+    }
 
     if (command) {
       try {
@@ -118,7 +120,7 @@ export function initializeReadlineHandlers(state: State): void {
         logger.error(`Error executing command "${commandName}": ${error}`);
       }
     } else {
-      logger.warn(`\nUnknown command: '${commandName}'. Type 'help' for a list of commands.\n`);
+      logger.warn(`Unknown command: '${commandName}'. Type 'help' for a list of commands.`);
     }
 
     state.readline.prompt();
