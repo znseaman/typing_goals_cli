@@ -19,7 +19,7 @@ export interface LoginResponse {
 export async function commandLogin(state: State, args?: string[]): Promise<void> {
   const hasValidToken = state.config.isTokenValid()
   if (hasValidToken) {
-    console.log(`\nYou're already logged into your MonkeyType account!\n`)
+    console.log(`You're already logged into your MonkeyType account!`)
     return
   }
 
