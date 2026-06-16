@@ -68,7 +68,6 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
         const allResults = await getAllResults(state)
         const presets: Array<PresetObject> = await getPresets(state)
         const tags: Array<TagObject> = await getTags(state)
-        const goalsObj = {} as GoalsObject
         
         if (!tags?.length) {
           logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
@@ -80,48 +79,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
           return
         }
 
-        for (const goal of goals) {
-          let associatedTag = tags?.find((tag) => tag._id == goal.tagId as string)
-          let associatedPreset = presets?.find((preset) => preset._id == goal.presetId)
-          if (associatedTag && associatedPreset) {
-            const presetConfig = JSON.parse(associatedPreset?.config || "") as PresetConfig
-            const tagPersonalBests = JSON.parse(associatedTag?.personalBests || "") as PersonalBests
-            let mode: string = presetConfig?.mode || (presetConfig?.words !== 0 ? "words" : (presetConfig?.time !== 0 ? "time" : "unknown mode"))
-            let mode2: string = String(presetConfig?.words || presetConfig?.time || "")
-
-            goalsObj[associatedTag._id] = {
-              count: 0,
-              goal: goal ? goal.measure : 0,
-              goalName: goal?.name,
-              goalType: goal?.type,
-              goalTimeFrame: goal?.timeframe,
-              goalTotalTests: goal?.measure,
-              goalTotalTime: goal?.measure,
-              name: associatedPreset.name,
-              // @ts-ignore
-              pb: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
-              // @ts-ignore
-              pbTimestamp: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
-              failedAttempts: 0,
-              totalSeconds: 0,
-              presetConfig: presetConfig || {},
-            }
-          }
-        }
-
-        for (const result of allResults as ResultResponse[]) {
-          const tagId = result.tags[0]
-          if (goalsObj[tagId]) {
-            goalsObj[tagId].count += 1
-            goalsObj[tagId].failedAttempts += (result?.restartCount || 0)
-            
-            // include complete and incomplete tests
-            goalsObj[tagId].totalSeconds += result.testDuration
-            if (result.incompleteTestSeconds) {
-              goalsObj[tagId].totalSeconds += result.incompleteTestSeconds
-            }
-          }
-        }
+        const goalsObj = createGoalsObject(goals, tags, presets, (allResults as ResultResponse[]))
 
         printGoalsTable(goals, goalsObj, verbose)
       } catch (error) {
@@ -132,45 +90,53 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
   }
 }
 
-export function printGoals(
-  results: ResultResponse[],
-  goalsObj: GoalsObject,
-) {
-  let string = `\nTyping Goals By Name and Preset:\n`
+export function createGoalsObject(goals: Array<GoalWithPresetAndTag>, tags: Array<TagObject>, presets: Array<PresetObject>, allResults: ResultResponse[]): GoalsObject {
+  const goalsObj = {} as GoalsObject
+  for (const goal of goals) {
+    let associatedTag = tags?.find((tag) => tag._id == goal.tagId as string)
+    let associatedPreset = presets?.find((preset) => preset._id == goal.presetId)
+    if (associatedTag && associatedPreset) {
+      // workaround for getting json data from database for now
+      const presetConfig = JSON.parse(associatedPreset?.config || "") as PresetConfig
+      const tagPersonalBests = JSON.parse(associatedTag?.personalBests || "") as PersonalBests
+      let mode: string = presetConfig?.mode || (presetConfig?.words !== 0 ? "words" : (presetConfig?.time !== 0 ? "time" : "unknown mode"))
+      let mode2: string = String(presetConfig?.words || presetConfig?.time || "")
 
-  let totalSeconds = 0
+      goalsObj[associatedTag._id] = {
+        count: 0,
+        goal: goal ? goal.measure : 0,
+        goalName: goal?.name,
+        goalType: goal?.type,
+        goalTimeFrame: goal?.timeframe,
+        goalTotalTests: goal?.measure,
+        goalTotalTime: goal?.measure,
+        name: associatedPreset.name,
+        // @ts-ignore
+        pb: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
+        // @ts-ignore
+        pbTimestamp: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
+        failedAttempts: 0,
+        totalSeconds: 0,
+        presetConfig: presetConfig || {},
+      }
+    }
+  }
 
-  for (const result of results) {
+  for (const result of allResults) {
     const tagId = result.tags[0]
     if (goalsObj[tagId]) {
       goalsObj[tagId].count += 1
-    }
-
-    totalSeconds += result.testDuration
-    if (result.incompleteTestSeconds) {
-      totalSeconds += result.incompleteTestSeconds
+      goalsObj[tagId].failedAttempts += (result?.restartCount || 0)
+      
+      // include complete and incomplete tests
+      goalsObj[tagId].totalSeconds += result.testDuration
+      if (result.incompleteTestSeconds) {
+        goalsObj[tagId].totalSeconds += result.incompleteTestSeconds
+      }
     }
   }
 
-  let goalsMet = 0
-
-  for (const [key] of Object.entries(goalsObj)) {
-    const metGoal = goalsObj[key].count >= goalsObj[key].goal
-    if (metGoal) goalsMet++
-    const metGoalIcon = metGoal ? `✅` : `❌`
-    const displayHowManyMore = metGoal ? `` : ` (Use preset "${goalsObj[key].name}" to complete ${goalsObj[key].goal - goalsObj[key].count} more)`
-    string += `${metGoalIcon} ${goalsObj[key].goalName}${displayHowManyMore}\n`
-  }
-
-  let goalsMetPercent = Math.round((goalsMet / Object.keys(goalsObj).length) * 100)
-  let goalsMetText = goalsMetPercent == 100 ? '🎉 100% 🎉' : `${goalsMetPercent}%`
-  string += `\nPercentage of Goals Met Today: ${goalsMetText}\n`
-
-  string += `\nMore statistics:\n`
-  string += `- Time Spent Typing Today: ${Math.round(totalSeconds / 60)} minutes \n`
-  string += `\nTo complete the rest of your planned typing goals for today, go to MonkeyType, select your preset associated with your goal (Shift+⌘+P + Presets + PRESET_NAME), and get to typing!\n`
-
-  logger.info(string)
+  return goalsObj;
 }
 
 async function create(state: State, args?: string[]) {
@@ -198,7 +164,21 @@ async function create(state: State, args?: string[]) {
     validatedName = true
   }
 
-  type = await validateType(state, type, defaultGoalOptions.type, false)
+  let editing = false
+  let def = defaultGoalOptions.type
+  let validatedType = false
+  while (!type || !validatedType) {
+    if (!type) type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
+
+    try {
+      type = validateType(type)
+    } catch {
+      type = ""
+      continue
+    }
+
+    validatedType = true
+  }
 
   let validatedMeasure = false
   while (!measure || !validatedMeasure) {
@@ -309,7 +289,19 @@ async function editGoal(state: State, args?: string[]) {
     noExistingGoal = false
   }
 
-  type = await validateType(state, type, (existingGoal as GoalWithPresetAndTag).type, true)
+  let editing = true
+  let def = (existingGoal as GoalWithPresetAndTag).type
+  let validatedType = false
+  while (!type || !validatedType) {
+    type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
+    if (type !== "time" && type !== "count") {
+      logger.error(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
+      type = ""
+      continue
+    }
+
+    validatedType = true
+  }
 
   let validatedMeasure = false
   while (!measure || !validatedMeasure) {
@@ -517,17 +509,10 @@ function createCompleter(options: string[]): (line: string) => void {
   }
 }
 
-async function validateType(state: State, type: string, def: string, editing: boolean) {
-  let validated = false
-  while (!type || !validated) {
-    type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
-    if (type !== "time" && type !== "count") {
-      logger.error(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
-      type = ""
-      continue
-    }
-
-    validated = true
+export function validateType(type: string) {
+  if (type !== "time" && type !== "count") {
+    logger.error(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
+    throw new Error("Invalid goal type")
   }
 
   return type

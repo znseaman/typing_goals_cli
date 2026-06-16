@@ -1,8 +1,10 @@
 import { describe, test, vi, expect } from "vitest";
-import { commandGoals, printGoalsTable, validateMeasure } from "./goals.js";
+import { commandGoals, createGoalsObject, printGoalsTable, validateMeasure, validateType } from "./goals.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { State } from "../state.test.js";
 import { logger } from "../ui/logger.js";
+import { TagObject } from "../db/queries/tags.js";
+import { PresetObject } from "../db/queries/presets.js";
 
 // globally mock the "read" module
 vi.mock("read", async (importOriginal) => {
@@ -97,14 +99,14 @@ describe("validateMeasure", () => {
     { measure: "0s", type: "time", expected: "Invalid number" },
   ])
   ('throws validateMeasure($measure, $type) -> $expected', ({measure, type, expected}) => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
 
     expect(() => validateMeasure(measure, type)).toThrow(
       new Error(expected),
     )
 
-    // expect(logSpy).toHaveBeenCalledTimes(1);
-    // logSpy.mockRestore();
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    logSpy.mockRestore();
   });
 
   test.each([
@@ -117,6 +119,32 @@ describe("validateMeasure", () => {
   ])
   ('validateMeasure($measure, $type) -> $expected', ({measure, type, expected}) => {
     expect(validateMeasure(measure, type)).toBe(expected)
+  });
+});
+
+describe("validateType", () => {
+  test.each([
+    { type: "count", expected: "count" },
+    { type: "", expected: "Invalid goal type" },
+    { type: "none", expected: "Invalid goal type" },
+    { type: "time", expected: "time" },
+  ])
+  ('throws validateType($type) -> $expected', async ({type, expected}) => {
+    const logSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+
+    if (type === expected) {
+      expect(validateType(type)).toBe(
+        expected
+      )
+    } else {
+      expect(() => validateType(type)).toThrow(
+        new Error(expected),
+      )
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+    }
+    
+    logSpy.mockRestore();
   });
 });
 
@@ -158,5 +186,21 @@ describe("commandGoals", () => {
 
     expect(getGoalsByUserIdSpy).toHaveBeenCalledTimes(1)
     getGoalsByUserIdSpy.mockRestore()
+  });
+});
+
+describe("createGoalsObject", () => {
+  test.each([
+    {
+      goals: [{tagId: "tagId1", presetId: "presetId1", measure: 2, name: "Goal 1", type: "count", timeframe: "daily"}], 
+      tags: [{_id: "tagId1", personalBests: `{ "words": { "25": [{ "wpm": 50, "timestamp": ${Date.now()} }] } }`}],
+      presets: [{_id: "presetId1", config: '{"mode": "words", "words": 25}', name: "Preset 1"}],
+      allResults: [{tags: ["tagId1"], restartCount: 1, testDuration: 15, incompleteTestSeconds: 15}],
+      expected: {tagId1: {count: 1, goal: 2, goalName: "Goal 1", goalType: "count", goalTimeFrame: "daily", goalTotalTime: 2, goalTotalTests: 2, name: "Preset 1", pb: 50, pbTimestamp: Date.now(), failedAttempts: 1, totalSeconds: 30, presetConfig: {mode: "words", words: 25}}},
+    },
+  ])
+  ('createGoalsObject(goals, tags, presets, allResults) -> $expected', ({goals, tags, presets, allResults, expected}) => {
+    // @ts-ignore
+    expect(createGoalsObject((goals as GoalWithPresetAndTag[]), (tags as Array<TagObject>), (presets as Array<PresetObject>), allResults)).toStrictEqual(expected)
   });
 });
