@@ -58,7 +58,7 @@ describe("printGoalsTable", () => {
       {
         "name": "Normal",
         "pb date": "N/A",
-        "preset name": "tag 1",
+        "associated preset": "tag 1",
         "status": "✅",
         "target": 2,
         "to go": 0,
@@ -77,9 +77,9 @@ describe("printGoalsTable", () => {
       "total time",
       "total tests",
       "❌ failed",
-      "preset name",
       "🏆 pb",
       "pb date",
+      "associated preset",
     ])
 
     logSpy.mockRestore();
