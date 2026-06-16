@@ -1,10 +1,9 @@
-import { isTokenValid, setConfig } from "./config.js";
 import { initializeReadlineHandlers, type State } from "./state.js";
 import { refreshToken } from "./monkeytype.js";
 
 export async function startREPL(state: State) {
   let wasPromptedBeforeInitialization = false
-  const hasValidToken = isTokenValid(state.config)
+  const hasValidToken = state.config.isTokenValid()
   const displayName = state.config.get("displayName")
   const loginHandler = () => state.commands["login"].execute(state)
 
@@ -19,11 +18,11 @@ export async function startREPL(state: State) {
       try {
         const response = await refreshToken(token)
 
-        setConfig({
+        state.config.setConfig({
           "idToken": response.id_token,
           "expiresIn": response.expires_in,
           "refreshToken": response.refresh_token,
-        }, state.config)
+        })
         console.log(`\nWelcome back, ${displayName}!\n`)
       } catch {
         wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)

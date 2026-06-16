@@ -1,6 +1,5 @@
 
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
-import { isTokenValid, setConfig } from "../config.js";
 import { read } from "read";
 import { createUser, getUserById } from "../db/queries/users.js";
 import { savePresetsAndTags } from "./presets.js";
@@ -18,7 +17,7 @@ export interface LoginResponse {
 }
 
 export async function commandLogin(state: State, args?: string[]): Promise<void> {
-  const hasValidToken = isTokenValid(state.config)
+  const hasValidToken = state.config.isTokenValid()
   if (hasValidToken) {
     console.log(`\nYou're already logged into your MonkeyType account!\n`)
     return
@@ -50,7 +49,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
         // @ts-ignore
         delete response.refreshToken
       }
-      setConfig(response || {}, state.config)
+      state.config.setConfig(response)
       console.log(`\nWe've successfully connected your MonkeyType account!\n`)
 
       // save user to db

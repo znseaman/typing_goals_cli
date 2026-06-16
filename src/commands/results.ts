@@ -1,5 +1,4 @@
 import type { State } from "../state.js"
-import { createRequestOptions } from "../config.js"
 import { getResults, ResultsResponse, ResultResponse } from "../monkeytype.js"
 import { getTags, TagObject } from "../db/queries/tags.js";
 import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
@@ -72,7 +71,7 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
 
   let response
   try {
-    const requestOptions = createRequestOptions(state.config, "GET")
+    const requestOptions = state.config.createRequestOptions("GET")
     response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
   } catch (error) {
     if (error instanceof Error) {

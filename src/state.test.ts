@@ -56,6 +56,10 @@ export const State = vi.fn(
     config = {
       get: vi.fn(),
       set: vi.fn(),
+      setConfig: vi.fn(),
+      isTokenValid: vi.fn(),
+      expireTokens: vi.fn(),
+      createRequestOptions: vi.fn(),
     };
     stopFullExit = false;
     removeReadline_runNonReadline_addReadline = vi.fn();

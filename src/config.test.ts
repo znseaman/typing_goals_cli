@@ -1,5 +1,5 @@
 import { describe, test, vi, expect } from "vitest";
-import { setConfig, isTokenValid, createRequestOptions, expireTokens } from "./config.js";
+import { CustomConf } from "./config.js";
 
 describe("Config", () => {
   test.each([
@@ -8,13 +8,14 @@ describe("Config", () => {
     { apiKey: "yyyyyy", method: "GET", authorization: "key", expected: "ApeKey yyyyyy" },
   ])
   ('createRequestOptions(config, $method, $authorization) -> $expected', ({method, authorization, idToken, apiKey, expected}) => {
-    const config = new Map([
-      ["idToken", idToken],
-      ["apiKey", apiKey],
-    ])
+    const config = new CustomConf({projectName: "test"})
+    config.setConfig({
+      "idToken": idToken,
+      "apiKey": apiKey,
+    })
     
     // @ts-ignore
-    const options = createRequestOptions(config, method, authorization);
+    const options = config.createRequestOptions(method, authorization);
 
     expect(options.headers.get("Authorization")).toBe(expected);
   });
@@ -23,14 +24,13 @@ describe("Config", () => {
     { idToken: "xxxxxx", expiresIn: "72387", refreshToken: "dsfu9hu349r87sdjhlkj", expected: undefined },
   ])
   ('expireTokens(config) -> $expected', ({ idToken, expiresIn, refreshToken, expected}) => {
-    const config = new Map([
-      ["idToken", idToken],
-      ["expiresIn", expiresIn],
-      ["refreshToken", refreshToken],
-    ])
+    const config = new CustomConf({projectName: "test"})
+    config.set("idToken", idToken)
+    config.set("refreshToken", refreshToken)
+    config.setConfig({"expiresIn": expiresIn})
     
     // @ts-ignore
-    expireTokens(config);
+    config.expireTokens(config);
 
     expect(config.get("expiresIn")).toBe(expected);
     expect(config.get("idToken")).toBe(expected);
@@ -43,12 +43,11 @@ describe("Config", () => {
     { expected: false },
   ])
   ('isTokenValid(config) -> $expected', ({ expiresIn, expected}) => {
-    const config = new Map([
-      ["expiresIn", expiresIn],
-    ])
+    const config = new CustomConf({projectName: "test"})
+    config.set({"expiresIn": String(expiresIn)})
     
     // @ts-ignore
-    const result = isTokenValid(config);
+    const result = config.isTokenValid();
 
     expect(result).toBe(expected);
   });
@@ -60,11 +59,10 @@ describe("Config", () => {
     const date = new Date(2012, 1, 1, 13);
     vi.setSystemTime(date);
 
-    const config = new Map([
-      ["idToken", "oldIdToken"],
-      ["expiresIn", "oldExpiresIn"],
-      ["refreshToken", "oldRefreshToken"],
-    ])
+    const config = new CustomConf({projectName: "test"})
+    config.set("idToken", "oldIdToken")
+    config.set("refreshToken", "oldRefreshToken")
+    config.setConfig({"expiresIn": "oldExpiresIn"})
 
     const obj = {
       idToken,
@@ -73,7 +71,7 @@ describe("Config", () => {
     }
     
     // @ts-ignore
-    setConfig(obj, config);
+    config.setConfig(obj, config);
 
     expect(config.get("expiresIn")).toBe(expectedExpiresIn);
     expect(config.get("idToken")).toBe(idToken);

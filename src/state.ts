@@ -2,8 +2,7 @@ import { stdin, stdout } from "node:process"
 import { createInterface, type Interface } from "node:readline"
 import { Commands, getCommands } from "./command.js";
 import { MonkeyType, monkeytype, refreshToken } from "./monkeytype.js";
-import type Conf from "conf";
-import { config, isTokenValid, setConfig } from "./config.js";
+import { config, CustomConf } from "./config.js";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { initializeDB } from "./db/index.js"
 import { Pool } from "pg";
@@ -26,7 +25,7 @@ export type State = {
   readline: Interface,
   commands: Commands,
   monkeytype: MonkeyType,
-  config: Conf,
+  config: CustomConf,
   stopFullExit: boolean,
   commandHistory: string[],
   removeReadline_runNonReadline_addReadline: (state: State, handler: () => Promise<void>) => void,
@@ -88,7 +87,7 @@ export function initializeReadlineHandlers(state: State): void {
 
     if (commandName !== "login") {
       // Bypass if under expires in
-      if (!isTokenValid(state.config)) {
+      if (!state.config.isTokenValid()) {
         // Try to refresh their token using refresh token
         const token = String(state.config.get("refreshToken") || "")
         if (!token) {
@@ -105,7 +104,7 @@ export function initializeReadlineHandlers(state: State): void {
             "refreshToken": response.refresh_token,
           }
     
-          setConfig(data, state.config)
+          state.config.setConfig(data)
         } catch {
           logger.info(`Type "login" to reconnect.`)
           return

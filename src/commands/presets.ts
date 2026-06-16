@@ -1,5 +1,4 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
-import { createRequestOptions } from "../config.js"
 import { emojiForPresetConfigOption, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { createPreset, deletePresets, editPresetById, getPresetById } from "../db/queries/presets.js"
 import { read } from "read"
@@ -33,7 +32,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
 }
 
 export async function savePresetsAndTags(state: State, printPresets: boolean, printTags: boolean) {
-  const requestOptions = createRequestOptions(state.config, 'GET')
+  const requestOptions = state.config.createRequestOptions("GET")
 
   let tags: TagsResponse = {data: [], message: ""}
   try {
