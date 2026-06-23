@@ -32,7 +32,7 @@ describe("Database Queries", () => {
   it("should insert and fetch a tag by id successfully", async () => {
     // Seed
     // @ts-ignore
-    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}}, "1")
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
 
     // Query
     // @ts-ignore
@@ -46,11 +46,11 @@ describe("Database Queries", () => {
   it("should insert and fetch a tag by name successfully", async () => {
     // Seed
     // @ts-ignore
-    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}}, "1")
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
 
     // Query
     // @ts-ignore
-    const result = await getTagByName(state, "1", "Normal");
+    const result = await getTagByName(state, "Normal");
 
     // Assert
     expect(result.name).toBe("Normal");
@@ -60,7 +60,7 @@ describe("Database Queries", () => {
   it("should insert and fetch tags successfully", async () => {
     // Seed
     // @ts-ignore
-    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}}, "1")
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
 
     // Query
     // @ts-ignore
@@ -74,7 +74,7 @@ describe("Database Queries", () => {
   it("should insert and delete tags successfully", async () => {
     // Seed
     // @ts-ignore
-    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}}, "1")
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
 
     // Query
     // @ts-ignore
@@ -90,7 +90,7 @@ describe("Database Queries", () => {
   it("should insert and edit a tag successfully", async () => {
     // Seed
     // @ts-ignore
-    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}}, "1")
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
 
     // Query
     // @ts-ignore
