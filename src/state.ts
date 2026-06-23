@@ -98,13 +98,14 @@ export function initializeReadlineHandlers(state: State): void {
     // add command name to command history
     state.commandHistory.push(commandName)
 
-    if (commandName !== "login") {
+    if (commandName !== "login" && commandName !== "config") {
       // Bypass if under expires in
       if (!state.config.isTokenValid()) {
         // Try to refresh their token using refresh token
         const token = String(state.config.get("refreshToken") || "")
         if (!token) {
           logger.info(`Type "login" to reconnect.`)
+          state.readline.prompt();
           return
         }
     
@@ -120,6 +121,7 @@ export function initializeReadlineHandlers(state: State): void {
           state.config.setConfig(data)
         } catch {
           logger.info(`Type "login" to reconnect.`)
+          state.readline.prompt();
           return
         }
       }
