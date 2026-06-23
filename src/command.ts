@@ -10,6 +10,7 @@ import { commandPresets } from "./commands/presets.js"
 import { commandDb } from "./commands/db.js"
 import { commandTags } from "./commands/tags.js"
 import { commandClear } from "./commands/clear.js"
+import { commandDoctor } from "./commands/doctor.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -42,6 +43,11 @@ export function getCommands(): Commands {
       ],
       description: "List the user configuration details",
       execute: commandConfig,
+    },
+    "doctor": {
+      name: "doctor",
+      description: "Check whether your environment appears healthy",
+      execute: commandDoctor,
     },
     "goals": {
       name: "goals",

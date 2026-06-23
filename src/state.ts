@@ -98,7 +98,7 @@ export function initializeReadlineHandlers(state: State): void {
     // add command name to command history
     state.commandHistory.push(commandName)
 
-    if (commandName !== "login" && commandName !== "config") {
+    if (commandName !== "login" && commandName !== "config" && commandName !== "doctor") {
       // Bypass if under expires in
       if (!state.config.isTokenValid()) {
         // Try to refresh their token using refresh token
