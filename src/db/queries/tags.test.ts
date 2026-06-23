@@ -78,7 +78,7 @@ describe("Database Queries", () => {
 
     // Query
     // @ts-ignore
-    await deleteTags(state, "1");
+    await deleteTags(state);
 
     // @ts-ignore
     const result = await getTags(state)

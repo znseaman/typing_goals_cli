@@ -13,14 +13,15 @@ export type TagObject = {
 }
 
 export type TagsQueries = {
-  createTag: (state: State, id: string, name: string, fullDetails: TagResponse, userId: string) => Promise<Tag>,
-  deleteTags: (state: State, userId: string) => Promise<void>,
+  createTag: (state: State, id: string, name: string, fullDetails: TagResponse) => Promise<Tag>,
+  deleteTags: (state: State) => Promise<void>,
   editTagById: (state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) => Promise<Tag>,
   getTagById: (state: State, id: string) => Promise<Tag>,
   getTags: (state: State) => Promise<Array<TagObject>>,
 }
 
-export async function createTag(state: State, id: string, name: string, fullDetails: TagResponse, userId: string) {
+export async function createTag(state: State, id: string, name: string, fullDetails: TagResponse) {
+  const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(tags).values({fullDetails, id, name, userId}).returning()
   return result
 }
@@ -30,7 +31,8 @@ export async function getTagById(state: State, id: string) {
   return result
 }
 
-export async function getTagByName(state: State, userId: string, name: string) {
+export async function getTagByName(state: State, name: string) {
+  const userId = String(state.config.get("localId"))
   const [result] = await state.db.select().from(tags).where(
     and(
       eq(tags.userId, userId),
@@ -50,7 +52,8 @@ export async function getTags(state: State): Promise<Array<TagObject>> {
   }).from(tags).where(eq(tags.userId, userId))
 }
 
-export async function deleteTags(state: State, userId: string) {
+export async function deleteTags(state: State) {
+  const userId = String(state.config.get("localId"))
   await state.db.delete(tags).where(eq(tags.userId, userId))
 }
 

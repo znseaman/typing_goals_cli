@@ -14,7 +14,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
           await removeReadline_runNonReadline_addReadline(state, async () => {
             const confirm = await read({prompt: "Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): ", default: "n", silent: false});
             if (confirm.toLowerCase() !== "y") return
-            await state.query.deletePresets(state, String(state.config.get("localId")))
+            await state.query.deletePresets(state)
             logger.success(`Successfully deleted all your presets and goals from the database!`)
           })
         } catch (error) {
@@ -51,7 +51,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
             continue
           }
 
-          const saved = await state.query.createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
+          const saved = await state.query.createTag(state, tag._id, tag.name, tag)
           if (saved) {
             console.debug(` db:createTag - ${saved.id} - ${saved.name}`)
           }
@@ -105,7 +105,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
             }
           }
 
-          const saved = await state.query.createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
+          const saved = await state.query.createPreset(state, preset._id, preset.name, preset)
           if (saved) {
             console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
           }

@@ -14,7 +14,7 @@ export async function commandTags(state: State, args?: string[]): Promise<void> 
           await removeReadline_runNonReadline_addReadline(state, async () => {
             const confirm = await read({prompt: "Deleting your tags will also delete your goals from the database. Confirm to delete your tags and goals (y/n): ", default: "n", silent: false});
             if (confirm.toLowerCase() !== "y") return
-            await state.query.deleteTags(state, String(state.config.get("localId")))
+            await state.query.deleteTags(state)
             logger.success(`Successfully deleted all your tags and goals from the database!`)
           })
         } catch (error) {

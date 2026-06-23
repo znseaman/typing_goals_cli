@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { presets, users } from "../schema.js";
-import { createPreset, editPresetById, getPresetById, getPresetByName, getPresets, deletePresets } from "./presets.js";
+import { createPreset, editPresetById, getPresetById, getPresets, deletePresets } from "./presets.js";
 
 describe("Database Queries", () => {
   let db: ReturnType<typeof drizzle>;
@@ -37,20 +37,6 @@ describe("Database Queries", () => {
     // Query
     // @ts-ignore
     const result = await getPresetById(state, "1");
-
-    // Assert
-    expect(result.name).toBe("Normal");
-    expect(result.id).toBe("1");
-  });
-
-  it("should insert and fetch a preset by name successfully", async () => {
-    // Seed
-    // @ts-ignore
-    await createPreset(state, "1", "Normal", {_id: "1", name: "Normal", config: {}, settingGroups: {}}, "1")
-
-    // Query
-    // @ts-ignore
-    const result = await getPresetByName(state, "1", "Normal");
 
     // Assert
     expect(result.name).toBe("Normal");
