@@ -10,7 +10,7 @@ What's cool about presets is that you can save all the settings you want to them
 
 Part of improving on a skill is being able to track progress. You may not see dramatic improvements in your typing in the short term but as you begin to practice over time, you begin to strengthen your muscle memory. The thought of typing an `a` becomes learned action.
 
-This tool was built so it becomes easy improve your typing through deliberate practice sessions. Setting a daily goal to do X tests focused on accuracy provides structure and accountability.
+This tool was built so it becomes easy improve your typing through deliberate practice sessions. Setting a daily goal to do X tests or spend X time on a specific type of test provides structure and accountability.
 
 ## Pre-Setup
 
@@ -19,7 +19,7 @@ This tool requires the following to be setup prior to running the project:
 - Node.js (install [nvm](https://github.com/nvm-sh/nvm) to manage node versions and see what version this project requires by viewing the `.nvmrc`)
 
 ### Docker
-This tool uses docker to fetch the DB
+This tool uses docker to create the database.
 
 ### PostgreSQL
 This tool requires setting up a Postgres DB which can be found at [PostgreSQL Local Setup](https://orm.drizzle.team/docs/guides/postgresql-local-setup). My instructions match what are done there but add more context if you're unfamiliar with Docker.
@@ -75,6 +75,9 @@ To exit the output screen, press `q`
 
 To exit the container, type `quit`
 
+### MonkeyType
+This tool requires a [MonkeyType](https://monkeytype.com/) account.
+
 ## Setup
 
 1. Clone repository
@@ -88,17 +91,16 @@ npm run initialize
 npm start
 ```
 
-Once you see a welcome message, you're all set!
+ℹ️ When starting the CLI the first time, you'll be prompted for the database url created in the pre-setup process as well as your email/password to your MonkeyType account.
 
 ## Features
 
 1. Tab autocompletion: when typing a command in the CLI, allow for the user to press tab to complete the command. For example, typing "go" + Tab will autocomplete to "goals". If no matches are found, the list of commands will be displayed below.
 2. Command history: arrow up and down through previous commands entered in the CLI.
+3. Remember me: keeps you logged in by using your refresh token to get a new access token when your access token expires.
+4. Create goals associated with presets: keep track of meeting a goal based on completing tests with tags associated with a preset.
 
 ## Coming Soon
 
-[X] `login` command with MonkeyType (and `logout` 😅 )
-[X] Add 'Remember Me' feature to refresh tokens when they expire
-[X] `results` command to list all tests completed today on MonkeyType
-[X] `goals` command to create, read, update, and delete daily goals
-[X] `clear` command to wipe the text from the CLI
+1. Add `doctor` command which will verify all configuration related steps including the Node version, DB connection, and MonkeyType account. This will serve as an easy way to troubleshoot whether the CLI is working as expected.
+2. Add `stats` command which will summarize the number of days you've met your goals, lowest/highest wpm, # of tests, # of failed tests, and other metrics that would assist in understanding whether you're meeting your targets and when to raise the bar on your goals.
