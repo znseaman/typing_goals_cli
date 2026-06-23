@@ -40,13 +40,13 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
   switch (crudType) {
     case "create":
-      await removeReadline_runNonReadline_addReadline(state, () => create(state, crudArgs as string[]))
+      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => create(state, crudArgs as string[]))
       break;
     case "edit":
-      await removeReadline_runNonReadline_addReadline(state, () => editGoal(state, crudArgs as string[]))
+      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => editGoal(state, crudArgs as string[]))
       break;
     case "delete":
-      await removeReadline_runNonReadline_addReadline(state, () => deleteGoal(state, crudArgs as string[]))
+      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
       break;
     default:
       // @ts-ignore
@@ -80,8 +80,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
 
         printGoalsTable(goals, goalsObj, verbose)
       } catch (error) {
-        logger.error(`An error occurred in listing goals. Please try again.`)
-        console.error((error as Error)?.stack, {code: JSON.stringify(error, null, 2)})
+        logger.error(`An error occurred executing "goals" command: ${(error as Error)?.message}. Please try again.`);
       }
       break;
   }

@@ -7,22 +7,22 @@ export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "c
 
 export async function commandPresets(state: State, args?: string[]): Promise<void> {
   if (args && args.length) {
-    const [command] = args
-    switch (command) {
+    const [subcommand] = args
+    switch (subcommand) {
       case "delete":
         try {
-          await removeReadline_runNonReadline_addReadline(state, async () => {
+          await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
             const confirm = await read({prompt: "Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): ", default: "n", silent: false});
             if (confirm.toLowerCase() !== "y") return
             await state.query.deletePresets(state)
             logger.success(`Successfully deleted all your presets and goals from the database!`)
           })
         } catch (error) {
-          console.error(`Unable to delete presets: ${error}`)
+          logger.error(`Unable to delete presets: ${(error as Error)?.message}`)
         }
         return
       default:
-        console.error(`Unknown subcommand: ${command}. Supported subcommands: delete`)
+        logger.error(`Unknown subcommand: ${subcommand}. Supported subcommands: delete`)
         return
     }
   }
@@ -57,13 +57,13 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
           }
         } catch (error) {
           if (error instanceof Error) {
-            console.error(error?.message, { code: JSON.stringify(error) })
+            logger.error(`${(error as Error).message}}`)
           }
         }
       }
     }
   } catch (error) {
-    console.error(`Failed to fetch tags: ${(error as Error).message}`)
+    logger.error(`Failed to fetch tags: ${(error as Error).message}`)
   } 
 
   let presets: PresetsResponse = {data: [], message: ""}
@@ -111,7 +111,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
           }
         } catch (error) {
           if (error instanceof Error) {
-            console.error(error?.message, { code: JSON.stringify(error) })
+            logger.error(`${(error as Error).message}}`)
           }
         }
       }
@@ -187,7 +187,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       console.table(objects, Object.keys(objects?.[0] || {}))
     }
   } catch (error) {
-    console.error(`Failed to fetch presets: ${(error as Error).message}`)
+    logger.error(`Failed to fetch presets: ${(error as Error).message}`)
   }
 }
 

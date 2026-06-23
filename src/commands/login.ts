@@ -44,7 +44,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
     const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
 
     let response = await state.monkeytype.login(email, password)
-    
+
     if (response) {
       if (rememberMe.toLowerCase() !== "y") {
         // @ts-ignore
@@ -62,10 +62,10 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
       }
 
       logger.success(`Successfully connected your MonkeyType account to the CLI!`)
-    }
 
-    await savePresetsAndTags(state, false, false)
+      await savePresetsAndTags(state, false, false)
+    }
   }
 
-  await removeReadline_runNonReadline_addReadline(state, handler)
+  await removeReadline_runNonReadline_addReadline(state, `login`, handler)
 }

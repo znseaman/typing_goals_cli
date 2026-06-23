@@ -34,7 +34,7 @@ export type State = {
   config: CustomConf,
   stopFullExit: boolean,
   commandHistory: string[],
-  removeReadline_runNonReadline_addReadline: (state: State, handler: () => Promise<void>) => void,
+  removeReadline_runNonReadline_addReadline: (state: State, commandName: string, handler: () => Promise<void>) => void,
   query: GoalsQueries & TagsQueries & ResultsQueries & PresetsQueries & UsersQueries,
 }
 
@@ -98,7 +98,7 @@ export function initializeReadlineHandlers(state: State): void {
     // add command name to command history
     state.commandHistory.push(commandName)
 
-    if (commandName !== "login" && commandName !== "config" && commandName !== "doctor") {
+    if (commandName !== "login" && commandName !== "config" && commandName !== "doctor" && commandName !== "help" && commandName !== "exit") {
       // Bypass if under expires in
       if (!state.config.isTokenValid()) {
         // Try to refresh their token using refresh token
@@ -131,10 +131,10 @@ export function initializeReadlineHandlers(state: State): void {
       try {
         await command.execute(state, args);
       } catch (error) {
-        logger.error(`Error executing command "${commandName}": ${error}`);
+        logger.error(`Error executing "${commandName}" command: ${error}`);
       }
     } else {
-      logger.warn(`Unknown command: '${commandName}'. Type 'help' for a list of commands.`);
+      logger.warn(`Unknown command: "${commandName}". Type "help" for a list of commands.`);
     }
 
     state.readline.prompt();
@@ -162,14 +162,14 @@ export async function removeReadline(state: State) {
 
 // A control mechanism given only one readline can exist
 // This solves for wanting to use another "readline"-like package but Node.js having limitations with readline
-export async function removeReadline_runNonReadline_addReadline(state: State, handler: () => Promise<void>) {
+export async function removeReadline_runNonReadline_addReadline(state: State, commandName: string, handler: () => Promise<void>) {
   removeReadline(state)
   
   try {
     await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
-      logger.error(`An error occurred: ${error}. Please try again.`)
+      logger.error(`An error occurred executing "${commandName}" command: ${(error as Error).message}`);
     }
   } finally {
     addReadline(state)

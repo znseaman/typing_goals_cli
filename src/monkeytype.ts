@@ -1,5 +1,3 @@
-
-
 // used for sign in with password
 const MONKEYTYPE_SIGN_IN_BASE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY = "AIzaSyB5m_AnO575kvWriahcF1SFIWp8Fj3gQno"
@@ -15,7 +13,7 @@ const MONKEYTYPE_REFRESH_TOKEN_URL = `${
 }?${MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS.toString()}`
 
 export type MonkeyType = {
-  login: (email: string, password: string) => Promise<LoginResponse>,
+  login: (email: string, password: string) => Promise<LoginResponse | void>,
   getPresets: (requestOptions: RequestOptions) => Promise<PresetsResponse>,
   getTags: (requestOptions: RequestOptions) => Promise<TagsResponse>,
   getResults: (offset: number, limit: number, requestOptions: RequestOptions, lastResultTimestamp: number) => Promise<ResultsResponse>,
@@ -39,17 +37,23 @@ export function getBody(email: string, password: string) {
   })
 }
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string): Promise<LoginResponse | void> {
   const requestOptions = {
     body: getBody(email, password),
     headers,
     method: "POST",
   }
 
-  return fetch(
+  const response = await fetch(
     `${MONKEYTYPE_SIGN_IN_BASE_URL}?${MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_SEARCH_PARAMS.toString()}`,
     requestOptions,
   ).then((response) => response.json())
+
+  if (response?.error) {
+    throw new Error(`Unable to connect your MonkeyType account to the CLI due to ${response?.error?.message.toLowerCase().replaceAll("_", " ")}. Please try again.`)
+  }
+
+  return response
 }
 
 export interface LoginResponse {
@@ -62,6 +66,7 @@ export interface LoginResponse {
   profilePicture: string
   refreshToken: string
   registered: boolean
+  error?: any
 }
 
 export interface PresetsResponse {

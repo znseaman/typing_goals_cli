@@ -283,7 +283,7 @@ describe("commandGoals", () => {
   });
 
   test.each([
-    { args: [], goal: goals2[0], goals: goals1, presets: [...presets1, ...presets2], test_path: "an error occurred in listing goals"},
+    { args: [], goal: goals2[0], goals: goals1, presets: [...presets1, ...presets2], test_path: "unable to connect to database error"},
     { args: ["create"], goal: goals2[0], goals: goals1, presets: [...presets1, ...presets2], test_path: "goal name already exists"},
     { args: ["create"], goal: goals2[0], goals: goals1, presets: [...presets1, ...presets2], test_path: "invalid goal type entered"},
     { args: ["create"], goal: goals2[0], goals: goals1, presets: [...presets1, ...presets2], test_path: "invalid goal measure entered"},
@@ -472,8 +472,8 @@ describe("commandGoals", () => {
         deleteGoalByName = vi.spyOn(state.query, "deleteGoalByName").mockResolvedValueOnce({name: goal.name})
       }
     } else {
-      if (test_path === "an error occurred in listing goals") {
-        getGoalsByUserIdSpy = vi.spyOn(state.query, "getGoalsByUserId").mockRejectedValueOnce(new Error("unable to connect to database"))
+      if (test_path === "unable to connect to database error") {
+        getGoalsByUserIdSpy = vi.spyOn(state.query, "getGoalsByUserId").mockRejectedValueOnce(new Error("unable to connect to database error"))
       }
     }
 
@@ -571,8 +571,8 @@ describe("commandGoals", () => {
         deleteGoalByName?.mockRestore()
       }
     } else {
-      if (test_path === "an error occurred in listing goals") {
-        expect(errorSpy).toHaveBeenCalledWith(`An error occurred in listing goals. Please try again.`)
+      if (test_path === "unable to connect to database error") {
+        expect(errorSpy).toHaveBeenCalledWith(`An error occurred executing "goals" command: unable to connect to database error. Please try again.`)
       }
     }
 

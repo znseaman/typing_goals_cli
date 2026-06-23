@@ -1,4 +1,5 @@
 import { initializeReadlineHandlers, type State } from "./state.js";
+import { logger } from "./ui/logger.js";
 
 export async function startREPL(state: State) {
   let wasPromptedBeforeInitialization = false
@@ -46,7 +47,7 @@ async function promptBeforeInitialization(handler: () => Promise<void>): Promise
     await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
-      console.log(`An error occurred: ${error}. Please try again.`)
+      logger.error(`${(error as Error).message}. Please try again.`)
     }
   } finally {
     return true
