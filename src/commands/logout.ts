@@ -1,6 +1,7 @@
 import type { State } from "../state.js"
+import { logger } from "../ui/logger.js"
 
 export async function commandLogout(state: State, args?: string[]): Promise<void> {
   state.config.expireTokens()
-  console.log("\nLogged out of your MonkeyType account\n")
+  logger.success("Logged out of your MonkeyType account")
 }

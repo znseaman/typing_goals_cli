@@ -6,6 +6,12 @@ import { ResultResponse } from "../../monkeytype.js"
 
 export type Result = typeof results.$inferSelect
 
+export type ResultsQueries = {
+  createResult: (state: State, id: string, fullDetails: ResultResponse) => Promise<Result>,
+  getResultById: (state: State, id: string) => Promise<Result>,
+  getResultsByUserIdAndAfterTimestamp: (state: State, timestamp: number) => Promise<Array<ResultResponse>>,
+}
+
 export async function createResult(state: State, id: string, fullDetails: ResultResponse) {
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(results).values({fullDetails, id, userId}).returning()
@@ -18,10 +24,6 @@ export async function getResultById(state: State, id: string) {
   return result
 }
 
-export async function getResultsByUserId(state: State, userId: string) {
-  return state.db.select().from(results).where(eq(results.userId, userId))
-}
-
 export async function getResultsByUserIdAndAfterTimestamp(state: State, timestamp: number) {
   const userId = String(state.config.get("localId"))
   const result = await state.db.select({fullDetails: results.fullDetails}).from(results).where(and(
@@ -29,7 +31,13 @@ export async function getResultsByUserIdAndAfterTimestamp(state: State, timestam
     gte(sql<number>`${results.fullDetails}->>'timestamp'`, timestamp)
   ))
 
-  if (!Array.isArray(result)) return []
+  if (result.length === 0) return []
 
   return result?.map(({fullDetails}) => fullDetails as ResultResponse)
 }
+
+export default {
+  createResult,
+  getResultById,
+  getResultsByUserIdAndAfterTimestamp,
+} as ResultsQueries

@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm"
 export async function commandDb(state: State, args?: string[]): Promise<void> {
   const isProd = isProduction()
   if (isProd) {
-    console.log(`\n The "db" command is not allowed to be used in production!`)
+    console.log(`The "db" command is not allowed to be used in production!`)
     return
   }
 

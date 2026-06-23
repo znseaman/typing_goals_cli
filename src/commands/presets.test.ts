@@ -1,7 +1,32 @@
 import { describe, test, vi, expect } from "vitest";
-import { commandPresets } from "./presets.js";
+import { commandPresets, getExtraPresetOptions } from "./presets.js";
 import { State } from "../state.test.js";
 import { read } from "read"
+import { PresetConfig } from "../monkeytype.js";
+import { logger } from "../ui/logger.js";
+
+const goals1 = [{tagId: "tagId1", presetId: "presetId1", measure: 2, name: "Goal 1", type: "count", timeframe: "daily", presetName: "Preset 1"}]
+const tags1 = [{_id: "tagId1", name: "Tag 1", personalBests: `{ "words": { "25": [{ "wpm": 50, "timestamp": 1781636303784 }] } }`}]
+const presets1 = [{_id: "presetId1", config: { "mode": "words", "words": 25, "tags": ["tagId1"] }, name: "Preset 1", tagId: "tagId1"}]
+
+const presetConfig = {
+  difficulty: "master",
+
+  language: "english",
+  mode: "words",
+  minWpmCustomSpeed: 78,
+  minAccCustom: 78,
+  minBurstCustomSpeed: 78,
+  blindMode: true,
+
+  minWpm: "off",
+  minAcc: "off",
+
+  minBurst: "off",
+
+  oppositeShiftMode: "off",
+  confidenceMode: "off",
+} as PresetConfig
 
 // globally mock the "read" module
 vi.mock("read", async (importOriginal) => {
@@ -13,33 +38,117 @@ vi.mock("read", async (importOriginal) => {
 })
 
 describe("commandPresets", () => {
-  test("should fail with unknown subcommand", async () => {
+  test.each([
+    { args: ["nope"], tags: [], presets: [], goals: [], test_path: "error"},
+    { args: ["delete"], tags: [], presets: [], goals: [], test_path: "success"},
+    { args: [], tags: tags1, presets: presets1, goals: goals1, test_path: "success - preset exists"},
+    { args: [], tags: tags1, presets: presets1, goals: goals1, test_path: "success - preset doesn't exist yet"},
+  ])
+  ('commandPresets(state, $args) => ', async ({args, tags, presets, goals, test_path}) => {
     const state = new State();
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+  
+    let getTagsSpy
+    let getTagByIdSpy
+    let createTagSpy
+    let editTagById
+    let getPresetsSpy
+    let getPresetById
+    let editPresetById
+    let createPreset
 
-    const args = ["nope"]
+    let getGoalsByUserId
+
+    if (args.length > 0) {
+      if (args[0] === "delete") {
+        if (test_path === "success") {
+          vi.mocked(read).mockResolvedValue("y")
+        }
+      }
+    } else {
+      if (test_path == "success - preset exists") {
+        getTagsSpy = vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({data: tags})
+        getTagByIdSpy = vi.spyOn(state.query, "getTagById").mockResolvedValue(true)
+        createTagSpy = vi.spyOn(state.query, "createTag").mockResolvedValue(true)
+        editTagById = vi.spyOn(state.query, "editTagById").mockResolvedValue({id: tags[0]._id, name: tags[0].name})
+
+        getPresetsSpy = vi.spyOn(state.monkeytype, "getPresets").mockResolvedValue({data: presets})
+        getPresetById = vi.spyOn(state.query, "getPresetById").mockResolvedValue(true)
+        editPresetById = vi.spyOn(state.query, "editPresetById").mockResolvedValue(true)
+
+        getGoalsByUserId = vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals)
+      } else if (test_path === "success - preset doesn't exist yet") {
+          getTagsSpy = vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({data: tags})
+          getTagByIdSpy = vi.spyOn(state.query, "getTagById").mockResolvedValue(true)
+          createTagSpy = vi.spyOn(state.query, "createTag").mockResolvedValue(true)
+          editTagById = vi.spyOn(state.query, "editTagById").mockResolvedValue({id: tags[0]._id, name: tags[0].name})
+
+          getPresetsSpy = vi.spyOn(state.monkeytype, "getPresets").mockResolvedValue({data: presets})
+          getPresetById = vi.spyOn(state.query, "getPresetById").mockResolvedValue(false)
+          // editPresetById = vi.spyOn(state.query, "editPresetById").mockResolvedValue(false)
+          createPreset = vi.spyOn(state.query, "createPreset").mockResolvedValue({id: presets[0]._id, name: presets[0].name})
+
+          getGoalsByUserId = vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals)
+      }
+      
+    }
+    
     // @ts-ignore
     await commandPresets(state, args);
 
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(errorSpy).toHaveBeenCalledWith(`Unknown subcommand: nope. Supported subcommands: delete`)
+    if (args.length > 0) {
+      if (args[0] === "delete") {
+        if (test_path === "success") {
+          expect(successSpy).toHaveBeenCalledTimes(1);
+          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted all your presets and goals from the database!`)
+        }
+      }
+    } else {
+      if (test_path === "error") {
+        expect(errorSpy).toHaveBeenCalledTimes(1);
+        expect(errorSpy).toHaveBeenCalledWith(`Unknown subcommand: nope. Supported subcommands: delete`)
+      } else {
+        if (test_path == "success - preset exists") {
+          expect(debugSpy).toHaveBeenCalledTimes(2);
+          expect(tableSpy).toHaveBeenCalledTimes(1);
+        } else if (test_path === "success - preset doesn't exist yet") {
+          expect(debugSpy).toHaveBeenCalledTimes(2);
+          expect(tableSpy).toHaveBeenCalledTimes(1);
+        }
+      }
+    }
 
+    getTagsSpy?.mockRestore()
+    getTagByIdSpy?.mockRestore()
+    createTagSpy?.mockRestore()
+    editTagById?.mockRestore()
+
+    getPresetsSpy?.mockRestore()
+    getPresetById?.mockRestore()
+    editPresetById?.mockRestore()
+    createPreset?.mockRestore()
+
+    getGoalsByUserId?.mockRestore()
+
+    successSpy.mockRestore();
     errorSpy.mockRestore();
-  });
-
-  test("should run presets delete command", async () => {
-    const state = new State();
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    vi.mocked(read).mockResolvedValue("y")
-
-    const args = ["delete"]
-    // @ts-ignore
-    await commandPresets(state, args);
-
-    expect(logSpy).toHaveBeenCalledTimes(1);
-    expect(logSpy).toHaveBeenCalledWith(`Successfully deleted all your presets and goals from the database!`)
-
+    tableSpy.mockRestore();
     logSpy.mockRestore();
+    debugSpy.mockRestore();
+  });
+});
+
+describe("getExtraPresetOptions", () => {
+  test.each([
+    { presetConfig: {}, expected: "", description: "should return '' when no preset config exists" },
+    { presetConfig: undefined, expected: "N/A", description: "should return 'N/A' when no preset config exists" },
+    { presetConfig: presetConfig, expected: "⭐ master", description: "display extra preset options" },
+  ])
+  ('$description', async ({presetConfig, expected}) => {
+    expect(getExtraPresetOptions(presetConfig)).toBe(expected);
   });
 });

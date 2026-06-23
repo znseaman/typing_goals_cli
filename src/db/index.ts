@@ -4,6 +4,7 @@ import Conf from 'conf';
 import { read } from "read";
 
 import * as schema from './schema.js'
+import { logger } from '../ui/logger.js';
 
 export async function initializeDB(config: Conf) {
   let dbURL = await promptDbURL(config)
@@ -18,9 +19,11 @@ export async function promptDbURL(config: Conf): Promise<string> {
     try {
       dbURL = await read({prompt: "Enter url: ", silent: false});
       config.set("dbURL", dbURL)
+      logger.success(`Successfully set the database url!`)
     } catch (error) {
       if ((error as Error).message !== "canceled") {
-        console.log(`An error occurred: ${error}. Please try again.`)
+        logger.error(`An error occurred: ${(error as Error).message}. Please try again.`)
+        dbURL = ""
       }
     }
   }

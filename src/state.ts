@@ -1,5 +1,6 @@
 import { stdin, stdout } from "node:process"
-import { createInterface, type Interface } from "node:readline"
+// import * as readlineModule { createInterface, type Interface } from "node:readline"
+import * as readlineModule from "node:readline"
 import { Commands, getCommands } from "./command.js";
 import { MonkeyType, monkeytype, refreshToken } from "./monkeytype.js";
 import { config, CustomConf } from "./config.js";
@@ -9,6 +10,10 @@ import { Pool } from "pg";
 import 'dotenv/config'
 import goals, { GoalsQueries } from "./db/queries/goals.js"
 import { logger } from "./ui/logger.js";
+import tags, { TagsQueries } from "./db/queries/tags.js";
+import results, { ResultsQueries } from "./db/queries/results.js";
+import presets, { PresetsQueries } from "./db/queries/presets.js";
+import users, { UsersQueries } from "./db/queries/users.js";
 
 export type CLICommand = {
   name: string;
@@ -22,14 +27,15 @@ export type State = {
   db: NodePgDatabase<typeof import("./db/schema.js")> & {
     $client: Pool;
   },
-  readline: Interface,
+  readlineModule: typeof readlineModule,
+  readline: readlineModule.Interface,
   commands: Commands,
   monkeytype: MonkeyType,
   config: CustomConf,
   stopFullExit: boolean,
   commandHistory: string[],
   removeReadline_runNonReadline_addReadline: (state: State, handler: () => Promise<void>) => void,
-  goalsQueries: GoalsQueries,
+  query: GoalsQueries & TagsQueries & ResultsQueries & PresetsQueries & UsersQueries,
 }
 
 export async function initializeState(): Promise<State> {
@@ -46,29 +52,36 @@ export async function initializeState(): Promise<State> {
 
   const readline = initializeReadline(getFullCommandList(commands), commandHistory)
 
-  const goalsQueries = goals
+  const query = {
+    ...goals,
+    ...tags,
+    ...results,
+    ...presets,
+    ...users,
+  }
 
   return {
     db,
     readline,
+    readlineModule,
     commands,
     monkeytype,
     config,
     stopFullExit: false,
     commandHistory,
     removeReadline_runNonReadline_addReadline,
-    goalsQueries
+    query
   }
 }
 
-export function initializeReadline(commandList: Array<string>, history: string[]): Interface {
+export function initializeReadline(commandList: Array<string>, history: string[]): readlineModule.Interface {
   function completer (line: string) {
     const hits = commandList.filter((cmd) => cmd.startsWith(line))
 
     return [hits.length ? hits : commandList, line]
   }
 
-  return createInterface({
+  return readlineModule.createInterface({
     input: stdin,
     output: stdout,
     completer: completer,
@@ -96,7 +109,7 @@ export function initializeReadlineHandlers(state: State): void {
         }
     
         try {
-          const response = await refreshToken(token)
+          const response = await state.monkeytype.refreshToken(token)
           
           const data = {
             "idToken": response.id_token,

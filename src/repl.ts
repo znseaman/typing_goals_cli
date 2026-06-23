@@ -1,5 +1,4 @@
 import { initializeReadlineHandlers, type State } from "./state.js";
-import { refreshToken } from "./monkeytype.js";
 
 export async function startREPL(state: State) {
   let wasPromptedBeforeInitialization = false
@@ -16,7 +15,7 @@ export async function startREPL(state: State) {
       wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
     } else {
       try {
-        const response = await refreshToken(token)
+        const response = await state.monkeytype.refreshToken(token)
 
         state.config.setConfig({
           "idToken": response.id_token,

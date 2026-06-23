@@ -1,14 +1,24 @@
 import * as fs from "node:fs/promises"
 import type { State } from "../state.js";
+import { logger } from "../ui/logger.js";
 
 export async function commandConfig(state: State, args?: string[]): Promise<void> {
   if (args && args.length) {
     const [command, field, ...value] = args
     const commandRequiresField = command == "get" || command == "set" || command == "delete"
     if (commandRequiresField && !field) {
-      console.error(`Usage: config ${command} <field>`)
+      logger.info(`Usage: config ${command} <field>`)
       return
     }
+    
+    const commandRequiresValue = command == "set"
+    if (commandRequiresValue) {
+      if (!value.join("")) {
+        logger.info(`Usage: config ${command} <field> <value>`)
+        return
+      }
+    }
+
     switch (command) {
       case "get":
         const result = state.config.get(field)
@@ -34,11 +44,11 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
         }
         return
       case "path":
-        console.log(`This config is located at: ${state.config.path}`)
+        logger.info(`This config is located at: ${state.config.path}`)
         return
       default:
-        console.error(`Unknown subcommand: ${command}. Supported subcommands: get`)
-        break;
+        console.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path`)
+        return
     }
   }
 
@@ -56,8 +66,8 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
     console.error(`Failed to parse config file at ${state.config.path}. Please make sure the file contains valid JSON.`)
   }
 
-  console.log(`\nPath: (${state.config.path}):`)
-  console.log(`\nUser Config: ${JSON.stringify(json, null, 2)}`)
+  logger.info(`Path: ${state.config.path}`)
+  logger.info(`User Config: ${JSON.stringify(json, null, 2)}`)
 }
 
 function parseStringValue(value: string) {

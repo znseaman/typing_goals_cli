@@ -18,6 +18,8 @@ export type MonkeyType = {
   login: (email: string, password: string) => Promise<LoginResponse>,
   getPresets: (requestOptions: RequestOptions) => Promise<PresetsResponse>,
   getTags: (requestOptions: RequestOptions) => Promise<TagsResponse>,
+  getResults: (offset: number, limit: number, requestOptions: RequestOptions, lastResultTimestamp: number) => Promise<ResultsResponse>,
+  refreshToken: (refreshToken: string) => Promise<RefreshTokenResponse>,
 }
 
 export const headers = new Headers()
@@ -281,7 +283,7 @@ export interface ResultResponse {
   wpm: number
 }
 
-export async function getResults(offset = 0, limit = 1000, requestOptions: {headers: Headers; method: string}, lastResultTimestamp: number): Promise<ResultsResponse> {
+export async function getResults(offset = 0, limit = 1000, requestOptions: RequestOptions, lastResultTimestamp: number): Promise<ResultsResponse> {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
@@ -349,4 +351,6 @@ export const monkeytype = {
   login,
   getPresets,
   getTags,
+  getResults,
+  refreshToken,
 } satisfies MonkeyType

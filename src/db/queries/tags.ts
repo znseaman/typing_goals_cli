@@ -12,6 +12,14 @@ export type TagObject = {
   personalBests: string,
 }
 
+export type TagsQueries = {
+  createTag: (state: State, id: string, name: string, fullDetails: TagResponse, userId: string) => Promise<Tag>,
+  deleteTags: (state: State, userId: string) => Promise<void>,
+  editTagById: (state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) => Promise<Tag>,
+  getTagById: (state: State, id: string) => Promise<Tag>,
+  getTags: (state: State) => Promise<Array<TagObject>>,
+}
+
 export async function createTag(state: State, id: string, name: string, fullDetails: TagResponse, userId: string) {
   const [result] = await state.db.insert(tags).values({fullDetails, id, name, userId}).returning()
   return result
@@ -51,3 +59,11 @@ export async function editTagById(state: State, id: string, toSet: {name?: strin
   const [result] = await state.db.update(tags).set(toSet).where(and(eq(tags.id, id), eq(tags.userId, userId))).returning()
   return result
 }
+
+export default {
+  createTag,
+  deleteTags,
+  editTagById,
+  getTagById,
+  getTags,
+} as TagsQueries

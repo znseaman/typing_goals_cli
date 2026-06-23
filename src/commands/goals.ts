@@ -2,13 +2,13 @@ import { removeReadline_runNonReadline_addReadline, type State } from "../state.
 import { read } from "read";
 import { getAllResults } from "./results.js";
 import { PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
-import { getPresets, PresetObject } from "../db/queries/presets.js";
-import { getTags, TagObject } from "../db/queries/tags.js";
-import { createGoal, deleteGoalByName, editGoalById, getGoalByName, getGoalsByUserId, GoalWithPresetAndTag } from "../db/queries/goals.js";
+import { PresetObject } from "../db/queries/presets.js";
+import { TagObject } from "../db/queries/tags.js";
+import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
 import { logger } from "../ui/logger.js";
 
-type GoalsObject = Record<string, {
+export type GoalsObject = Record<string, {
   count: number,
   goal: number,
   name: string,
@@ -53,21 +53,18 @@ export async function commandGoals(state: State, args?: string[]): Promise<void>
       const [isVerbose] = args
       const verbose = isVerbose === "-v" ? true : false
 
-      // list current goals
-      const goals = await state.goalsQueries.getGoalsByUserId(state, String(state.config.get("localId")))
-
-      if (!goals?.length) {
-        logger.error(`No goals created yet. Type "goals create" to create a goal.`)
-        return
-      }
-
-      // sort names alphabetically
-      goals.sort((a: GoalWithPresetAndTag, b: GoalWithPresetAndTag) => a.name.localeCompare(b.name))
-
       try {
+        // list current goals
+        const goals = await state.query.getGoalsByUserId(state)
+
+        if (!goals?.length) {
+          logger.error(`No goals created yet. Type "goals create" to create a goal.`)
+          return
+        }
+
         const allResults = await getAllResults(state)
-        const presets: Array<PresetObject> = await getPresets(state)
-        const tags: Array<TagObject> = await getTags(state)
+        const presets: Array<PresetObject> = await state.query.getPresets(state)
+        const tags = await state.query.getTags(state)
         
         if (!tags?.length) {
           logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
@@ -142,21 +139,21 @@ export function createGoalsObject(goals: Array<GoalWithPresetAndTag>, tags: Arra
 async function create(state: State, args?: string[]) {
   let [name, type, measure, presetName] = args || ["", "", "", ""]
 
-  const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+  const goals = await state.query.getGoalsByUserId(state)
 
-  const presets: Array<PresetObject> = await getPresets(state)
+  const presets: Array<PresetObject> = await state.query.getPresets(state)
 
   let validatedName = false
   while (!name || !validatedName) {
     if (!name) name = await read({prompt: "Enter goal name: "});
     if (name === "") {
-      logger.error("\nPlease enter a valid goal name.\n")
+      logger.error("Please enter a valid goal name.")
       continue
     }
     
-    let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
+    let existingGoal = await state.query.getGoalByName(state, name)
     if (existingGoal) {
-      logger.error("\nGoal already exists. Please enter another goal name.\n")
+      logger.error("Goal already exists. Please enter another goal name.")
       name = ""
       continue
     }
@@ -219,12 +216,12 @@ async function create(state: State, args?: string[]) {
     }
 
     if (!presetId) {
-      logger.error(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.\n`)
+      logger.error(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
       presetName = ""
       continue
     }
     if (!tagId) {
-      logger.error(`There is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.\n`)
+      logger.error(`There is no tag associated with preset "${presetName}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
       presetName = ""
       continue
     }
@@ -240,7 +237,7 @@ async function create(state: State, args?: string[]) {
     validatedPresetName = true
   }
 
-  const goal = await createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
+  const goal = await state.query.createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
 
   logger.success(`Successfully created a new goal named "${goal.name}"`)
 }
@@ -248,9 +245,9 @@ async function create(state: State, args?: string[]) {
 async function editGoal(state: State, args?: string[]) {
   let [name, type, measure, presetName] = args || ["", "", "", ""]
 
-  const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+  const goals = await state.query.getGoalsByUserId(state)
 
-  const presets: Array<PresetObject> = await getPresets(state)
+  const presets: Array<PresetObject> = await state.query.getPresets(state)
 
   let existingGoal: GoalWithPresetAndTag | boolean = false
   while (!existingGoal) {
@@ -260,7 +257,7 @@ async function editGoal(state: State, args?: string[]) {
       continue
     }
 
-    existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
+    existingGoal = await state.query.getGoalByName(state, name)
     if (!existingGoal) {
       logger.error(`There is no goal "${name}" associated with this account. Enter another goal name.`)
       name = ""
@@ -278,7 +275,7 @@ async function editGoal(state: State, args?: string[]) {
     }
 
     if (newName !== name) {
-      noExistingGoal = await getGoalByName(state, newName, String(state.config.get("localId")))
+      noExistingGoal = await state.query.getGoalByName(state, newName)
       if (noExistingGoal) {
         logger.error(`There is already a goal "${newName}" associated with this account. Enter a different new goal name.`)
         newName = ""
@@ -334,6 +331,17 @@ async function editGoal(state: State, args?: string[]) {
   while (!presetName || !validatedPresetName) {
     if (!presetName) presetName = await read({prompt: "Enter new preset name to connect this goal to: ", default: oldPresetName, completer: createCompleter(availablePresetNames)});
 
+    // only check if the preset names have changed
+    if (oldPresetName !== presetName) {
+      // does the new preset name already have a goal that it's associated with?
+      let matchingGoal = goals.find((goal) => goal.presetName === presetName)
+      if (matchingGoal) {
+        logger.error(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
+        presetName = ""
+        continue
+      }
+    }
+
     for (const preset of presets) {
       if (preset.name === presetName) {
         presetId = preset._id
@@ -353,17 +361,6 @@ async function editGoal(state: State, args?: string[]) {
       continue
     }
 
-    // only check if the preset names have changed
-    if (oldPresetName !== presetName) {
-      // does the new preset name already have a goal that it's associated with?
-      let matchingGoal = goals.find((goal) => goal.presetName === presetName)
-      if (matchingGoal) {
-        logger.error(`There is already a goal "${matchingGoal.name}" associated with this preset. Enter another preset name.`)
-        presetName = ""
-        continue
-      }
-    }
-
     validatedPresetName = true
   }
 
@@ -374,7 +371,7 @@ async function editGoal(state: State, args?: string[]) {
   } as {name?: string, type?: string, measure?: number, presetId?: string, timeframe?: string};
 
   // @ts-ignore
-  const goal = await editGoalById(state, (existingGoal as GoalWithPresetAndTag).id, String(state.config.get("localId")), toSet)
+  const goal = await state.query.editGoalById(state, (existingGoal as GoalWithPresetAndTag).id, String(state.config.get("localId")), toSet)
 
   logger.success(`Successfully edited the goal named "${goal.name}"`)
 }
@@ -382,19 +379,19 @@ async function editGoal(state: State, args?: string[]) {
 async function deleteGoal(state: State, args?: string[]) {
   let [name] = args || [""]
 
-  const goals = await getGoalsByUserId(state, String(state.config.get("localId")))
+  const goals = await state.query.getGoalsByUserId(state)
 
   let validatedName = false
   while (!name || !validatedName) {
     if (!name) name = await read({prompt: "Enter goal name to delete: ", completer: createCompleter(goals.map((goal) => goal.name))});
     if (name === "") {
-      logger.error("\nPlease enter a valid goal name.\n")
+      logger.error("Please enter a valid goal name.")
       continue
     }
 
-    let existingGoal = await getGoalByName(state, name, String(state.config.get("localId")))
+    let existingGoal = await state.query.getGoalByName(state, name)
     if (!existingGoal) {
-      logger.error(`\nThere is no goal "${name}" associated with this account. Please enter another goal name.\n`)
+      logger.error(`There is no goal "${name}" associated with this account. Please enter another goal name.`)
       name = ""
       continue
     }
@@ -402,7 +399,7 @@ async function deleteGoal(state: State, args?: string[]) {
     validatedName = true
   }
 
-  let goal = await deleteGoalByName(state, name, String(state.config.get("localId")))
+  let goal = await state.query.deleteGoalByName(state, name, String(state.config.get("localId")))
 
   logger.success(`Successfully deleted the goal named "${goal.name}"`)
 }
@@ -423,15 +420,11 @@ export function printGoalsTable(
     let status
     if (goal.type === "count") {
       status = goalObject?.count >= goal.measure
-      toGo = status ? 0 : goal.measure - goalObject?.count
-    } else if (goal.type === "time") {
-      const totalMilliseconds = goalObject?.totalSeconds * 1000
+      toGo = status ? 0 : goal.measure - (goalObject?.count || 0)
+    } else {
+      const totalMilliseconds = (goalObject?.totalSeconds || 0) * 1000
       status = totalMilliseconds >= goal.measure
       toGo = status ? 0 : convertMillisecondsToSimplifiedTime(goal.measure - totalMilliseconds)
-      
-    } else {
-      status = false
-      toGo = 0
     }
     
     let object = {}
@@ -501,7 +494,7 @@ export function validateMeasure(measure: string, type: string): string {
   return measure
 }
 
-function createCompleter(options: string[]): (line: string) => void {
+export function createCompleter(options: string[]): (line: string) => void {
   return (line: string) => {
     const hits = options.filter((option) => option.toLowerCase().startsWith(line.toLowerCase()))
 

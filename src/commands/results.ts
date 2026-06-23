@@ -1,7 +1,6 @@
 import type { State } from "../state.js"
-import { getResults, ResultsResponse, ResultResponse } from "../monkeytype.js"
-import { getTags, TagObject } from "../db/queries/tags.js";
-import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "../db/queries/results.js";
+import { ResultsResponse, ResultResponse } from "../monkeytype.js"
+import { createResult, getResultById } from "../db/queries/results.js";
 import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
 import { logger } from "../ui/logger.js";
 
@@ -9,7 +8,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
   const allResults = await getAllResults(state)
   if (!allResults) return
 
-  const tags: Array<TagObject> = await getTags(state)
+  const tags = await state.query.getTags(state)
   const tagsObj = {} as Record<string, {count: number; name: string}>
   for (const tag of tags) {
     if (!tagsObj[tag._id]) {
@@ -39,7 +38,7 @@ export function printResultsTable(
   tagsObj: Record<string, {count: number; name: string}>,
 ) {
   if (!results.length) {
-    logger.info(`No results to display yet! Take a test to see your results here.\n`)
+    logger.info(`No results to display yet! Take a test to see your results here.`)
     return
   }
 
@@ -65,14 +64,14 @@ export function printResultsTable(
 export async function getAllResults(state: State): Promise<ResultResponse[] | void>  {
   const startOfTodayUTC = getStartOfTodayUTC()
 
-  const onlyToday = await getResultsByUserIdAndAfterTimestamp(state, startOfTodayUTC)
+  const onlyToday = await state.query.getResultsByUserIdAndAfterTimestamp(state, startOfTodayUTC) || [{}]
   
-  const lastResultTimeStamp = onlyToday.at(-1)?.timestamp || startOfTodayUTC
+  const lastResultTimeStamp = onlyToday?.at(-1)?.timestamp || startOfTodayUTC
 
   let response
   try {
     const requestOptions = state.config.createRequestOptions("GET")
-    response = (await getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
+    response = (await state.monkeytype.getResults(0, 1000, requestOptions, lastResultTimeStamp)) as ResultsResponse
   } catch (error) {
     if (error instanceof Error) {
       logger.error(error?.message)
@@ -83,13 +82,13 @@ export async function getAllResults(state: State): Promise<ResultResponse[] | vo
   const allResults = [...onlyToday];
   for (const result of response?.data || []) {
     try {
-      let exists = await getResultById(state, result._id)
+      let exists = await state.query.getResultById(state, result._id)
       if (exists) continue
     } catch (error) {
       continue
     }
 
-    const saved = await createResult(state, result._id, result)
+    const saved = await state.query.createResult(state, result._id, result)
     if (saved) {
       allResults.push(result);
     }

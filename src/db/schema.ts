@@ -72,3 +72,23 @@ export const goals = pgTable('goals', {
     .references(() => users.id, {onDelete: 'cascade'})
     .notNull()
 })
+
+export const goalsHistory = pgTable('goals_history', {
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  id: uuid('id').defaultRandom().primaryKey().notNull(),
+  name: text('name').notNull(),
+  type: goalTypeEnum('type').notNull(),
+  measure: integer('measure').notNull(),
+  timeframe: text('timeframe').notNull(),
+  totalMeasure: integer('measure').notNull(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+  goalId: text('goal_id')
+    .references(() => goals.id, {onDelete: 'cascade'})
+    .notNull(),
+  userId: text('user_id')
+    .references(() => users.id, {onDelete: 'cascade'})
+    .notNull()
+})

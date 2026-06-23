@@ -5,10 +5,13 @@ import { goals, presets } from "../schema.js"
 
 export type Goal = typeof goals.$inferSelect
 
-export type GoalWithPresetAndTag = { id: string; name: string; type: "time" | "count", measure: number, presetId: string; presetName: string | null; tagId: string | null; timeframe: string; }
+export type GoalWithPresetAndTag = { id: string; name: string; type: "time" | "count", measure: number, presetId: string; presetName: string | null; tagId: string | null; timeframe: string;}
 
 export type GoalsQueries = {
-  getGoalsByUserId: (state: State, userId: string) => Promise<Array<GoalWithPresetAndTag>>,
+  getGoalsByUserId: (state: State) => Promise<Array<GoalWithPresetAndTag>>,
+  getGoalByName: (state: State, name: string) => Promise<GoalWithPresetAndTag | boolean>,
+  createGoal: (state: State, name: string, type: "time" | "count", measure: number, presetId: string, userId: string, timeframe: string) => Promise<Goal>,
+  deleteGoalByName: (state: State, name: string, userId: string) => Promise<{name: string}>
 }
 
 // eslint-disable-next-line max-params
@@ -17,13 +20,16 @@ export async function createGoal(state: State, name: string, type: "time" | "cou
   return result
 }
 
-export async function getGoalsByUserId(state: State, userId: string) {
+export async function getGoalsByUserId(state: State) {
+  const userId = String(state.config.get("localId"))
+  // return by name alphabetically
   return state.db.select(
     {id: goals.id, name: goals.name, type: goals.type, measure: goals.measure, presetId: goals.presetId, presetName: presets.name, tagId: sql<string>`${presets.fullDetails}->'config'->'tags'->>0`, timeframe: goals.timeframe}
-  ).from(goals).leftJoin(presets, eq(goals.presetId, presets.id)).where(eq(goals.userId, userId))
+  ).from(goals).leftJoin(presets, eq(goals.presetId, presets.id)).where(eq(goals.userId, userId)).orderBy(goals.name)
 }
 
-export async function getGoalByName(state: State, name: string, userId: string): Promise<GoalWithPresetAndTag | boolean> {
+export async function getGoalByName(state: State, name: string): Promise<GoalWithPresetAndTag | boolean> {
+  const userId = String(state.config.get("localId"))
   const result = await state.db.select(
     {id: goals.id, name: goals.name, type: goals.type, measure: goals.measure, presetId: goals.presetId, presetName: presets.name, tagId: sql<string>`${presets.fullDetails}->'config'->'tags'->>0`, timeframe: goals.timeframe}
   ).from(goals).leftJoin(presets, eq(goals.presetId, presets.id)).where(and(eq(goals.name, name), eq(goals.userId, userId)))
@@ -42,4 +48,7 @@ export async function editGoalById(state: State, id: string, userId: string, toS
 
 export default {
   getGoalsByUserId,
+  getGoalByName,
+  createGoal,
+  deleteGoalByName,
 } as GoalsQueries

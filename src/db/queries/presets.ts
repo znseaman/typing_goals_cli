@@ -14,6 +14,14 @@ export type PresetObject = {
   goalName: string,
 }
 
+export type PresetsQueries = {
+  createPreset: (state: State, id: string, name: string, fullDetails: PresetResponse, userId: string) => Promise<Preset>,
+  editPresetById: (state: State, id: string, toSet: {name?: string, fullDetails?: PresetResponse}) => Promise<Preset>,
+  deletePresets: (state: State, userId: string) => Promise<void>,
+  getPresetById: (state: State, id: string) => Promise<Preset>,
+  getPresets: (state: State) => Promise<Array<PresetObject>>,
+}
+
 export async function createPreset(state: State, id: string, name: string, fullDetails: PresetResponse, userId: string) {
   const [result] = await state.db.insert(presets).values({fullDetails, id, name, userId}).returning()
   return result
@@ -55,3 +63,11 @@ export async function editPresetById(state: State, id: string, toSet: {name?: st
   const [result] = await state.db.update(presets).set(toSet).where(and(eq(presets.id, id), eq(presets.userId, userId))).returning()
   return result
 }
+
+export default {
+  createPreset,
+  editPresetById,
+  deletePresets,
+  getPresetById,
+  getPresets,
+} as PresetsQueries

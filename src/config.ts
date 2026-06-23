@@ -32,8 +32,8 @@ export class CustomConf extends Conf {
   }
 
   isTokenValid() {
-    const expiresIn = Number(this.get('expiresIn') || 0)
-    if (!expiresIn) return false
+    const expiresIn = Number(this.get('expiresIn'))
+    if (Number.isNaN(expiresIn)) return false
 
     return Date.now() < expiresIn
   }

@@ -1,8 +1,7 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
-import { emojiForPresetConfigOption, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
-import { createPreset, deletePresets, editPresetById, getPresetById } from "../db/queries/presets.js"
+import { emojiForPresetConfigOption, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { read } from "read"
-import { createTag, editTagById, getTagById } from "../db/queries/tags.js"
+import { logger } from "../ui/logger.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
@@ -15,8 +14,8 @@ export async function commandPresets(state: State, args?: string[]): Promise<voi
           await removeReadline_runNonReadline_addReadline(state, async () => {
             const confirm = await read({prompt: "Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): ", default: "n", silent: false});
             if (confirm.toLowerCase() !== "y") return
-            await deletePresets(state, String(state.config.get("localId")))
-            console.log(`Successfully deleted all your presets and goals from the database!`)
+            await state.query.deletePresets(state, String(state.config.get("localId")))
+            logger.success(`Successfully deleted all your presets and goals from the database!`)
           })
         } catch (error) {
           console.error(`Unable to delete presets: ${error}`)
@@ -42,17 +41,17 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       // save tags to db
       for await (const tag of tags?.data) {
         try {
-          const exists = await getTagById(state, tag._id)
+          const exists = await state.query.getTagById(state, tag._id)
           if (exists) {
             // Update name and fullDetails
-            const updated = await editTagById(state, tag._id, {name: tag.name, fullDetails: tag})
+            const updated = await state.query.editTagById(state, tag._id, {name: tag.name, fullDetails: tag})
             if (updated) {
               console.debug(`db:editTagById - ${updated.id} - ${updated.name}`)
             }
             continue
           }
 
-          const saved = await createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
+          const saved = await state.query.createTag(state, tag._id, tag.name, tag, String(state.config.get("localId")))
           if (saved) {
             console.debug(` db:createTag - ${saved.id} - ${saved.name}`)
           }
@@ -75,10 +74,10 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       // save presets to db
       for await (const preset of presets?.data) {
         try {
-          const exists = await getPresetById(state, preset._id)
+          const exists = await state.query.getPresetById(state, preset._id)
           if (exists) {
             // Update name and fullDetails
-            const updated = await editPresetById(state, preset._id, {name: preset.name, fullDetails: preset})
+            const updated = await state.query.editPresetById(state, preset._id, {name: preset.name, fullDetails: preset})
             if (updated) {
               console.debug(`db:editPresetById - ${updated.id} - ${updated.name}`)
             }
@@ -94,7 +93,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
           const tagId = preset?.config?.tags[0]
 
           // verify that you have this tag in the db
-          let tag = await getTagById(state, tagId)
+          let tag = await state.query.getTagById(state, tagId)
           if (!tag) {
             // if you don't have this tag, all tags from MonkeyType and verify that it exists
             const foundTag = tags?.data.filter((tag) => tag._id === tagId)
@@ -106,7 +105,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
             }
           }
 
-          const saved = await createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
+          const saved = await state.query.createPreset(state, preset._id, preset.name, preset, String(state.config.get("localId")))
           if (saved) {
             console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
           }
@@ -122,7 +121,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
 
-      const goals = await state.goalsQueries.getGoalsByUserId(state, String(state.config.get("localId")))
+      const goals = await state.query.getGoalsByUserId(state)
 
       const objects = []
       console.log(`\nYour Presets:`)
@@ -147,45 +146,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
           [`${emojiForPresetConfigOption["minAccCustom"]}`]: presetConfig?.minAccCustom || 0,
           [`${emojiForPresetConfigOption["minBurstCustomSpeed"]}`]: presetConfig?.minBurstCustomSpeed || 0,
           [`${emojiForPresetConfigOption["blindMode"]}`]: presetConfig?.blindMode || false,
-          "extra preset options": presetConfig ? Object.entries(presetConfig).reduce((acc, [key, value]) => {
-            if (bannedPresetOptions.includes(key)) return acc
-  
-            // suppress as they have their own columns now
-            if (key === "language" || key === "mode" || key === mode || key === "minWpmCustomSpeed" || key === "minAccCustom" || key === "minBurstCustomSpeed" || key === "blindMode") {
-              return acc
-            }
-  
-            // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
-            if ((key === "minWpm" || key === "minAcc") && (value === "custom" || value === "off")) {
-              return acc
-            }
-  
-            // hide minBurstCustomSpeed and minBurst when minBurst is off
-            if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && presetConfig?.minBurst === "off") {
-              return acc
-            }
-  
-            // suppress when "words" is 0
-            if (key === "words" && value === 0) {
-              return acc
-            }
-  
-            // suppress when "time" is 0
-            if (key === "time" && value === 0) {
-              return acc
-            }
-  
-            // suppress when "difficulty" is "normal"
-            if (key === "difficulty" && value === "normal") return acc
-  
-            // suppress when "oppositeShiftMode" or "confidenceMode" is "off"
-            if ((key === "oppositeShiftMode" || key === "confidenceMode") && value === "off") return acc
-  
-            const emoji: string = key == "difficulty" ? emojiForPresetConfigOption[key][value as string] || "" : emojiForPresetConfigOption[key] || ""
-            const suppressValue = (key == "blindMode" || key == "confidenceMode" || key == "oppositeShiftMode")
-            acc.push(`${emoji ? emoji : `${key}:`}${suppressValue ? "" : ` ${value}`}`)
-            return acc
-          }, [] as string[]).join(`, `) : 'N/A',
+          "extra preset options": getExtraPresetOptions(presetConfig),
         })
       }
 
@@ -228,4 +189,46 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
   } catch (error) {
     console.error(`Failed to fetch presets: ${(error as Error).message}`)
   }
+}
+
+export function getExtraPresetOptions(presetConfig: PresetConfig | undefined): string {
+  return presetConfig ? Object.entries(presetConfig).reduce((acc, [key, value]) => {
+    if (bannedPresetOptions.includes(key)) return acc
+
+    // suppress as they have their own columns now
+    if (key === "language" || key === "mode" || key === presetConfig?.mode || key === "minWpmCustomSpeed" || key === "minAccCustom" || key === "minBurstCustomSpeed" || key === "blindMode") {
+      return acc
+    }
+
+    // suppress these options if it's "custom" since it doesn't give any meaningful information about the preset
+    if ((key === "minWpm" || key === "minAcc") && (value === "custom" || value === "off")) {
+      return acc
+    }
+
+    // hide minBurstCustomSpeed and minBurst when minBurst is off
+    if ((key === "minBurst" && value === "off") || (key === "minBurstCustomSpeed") && presetConfig?.minBurst === "off") {
+      return acc
+    }
+
+    // suppress when "words" is 0
+    if (key === "words" && value === 0) {
+      return acc
+    }
+
+    // suppress when "time" is 0
+    if (key === "time" && value === 0) {
+      return acc
+    }
+
+    // suppress when "difficulty" is "normal"
+    if (key === "difficulty" && value === "normal") return acc
+
+    // suppress when "oppositeShiftMode" or "confidenceMode" is "off"
+    if ((key === "oppositeShiftMode" || key === "confidenceMode") && value === "off") return acc
+
+    const emoji: string = key == "difficulty" ? emojiForPresetConfigOption[key][value as string] || "" : emojiForPresetConfigOption[key] || ""
+    const suppressValue = (key == "blindMode" || key == "confidenceMode" || key == "oppositeShiftMode")
+    acc.push(`${emoji ? emoji : `${key}:`}${suppressValue ? "" : ` ${value}`}`)
+    return acc
+  }, [] as string[]).join(`, `) : 'N/A'
 }
