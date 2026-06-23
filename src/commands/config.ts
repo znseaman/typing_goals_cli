@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises"
 import type { State } from "../state.js";
 import { logger } from "../ui/logger.js";
+import { initializeDB } from "../db/index.js";
 
 export async function commandConfig(state: State, args?: string[]): Promise<void> {
   if (args && args.length) {
@@ -34,14 +35,26 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
           state.config.set(field, parsedValue)
         } catch (error) {
           console.error(`Unable to set value to field "${field}": ${error}`)
+          return
         }
+
+        if (field === "dbURL") {
+          state.db = await initializeDB(state.config)
+        }
+
         return
       case "delete":
         try {
           state.config.delete(field)
         } catch (error) {
           console.error(`Unable to delete field "${field}": ${error}`)
+          return
         }
+
+        if (field === "dbURL") {
+          state.db = await initializeDB(state.config)
+        }
+
         return
       case "path":
         logger.info(`This config is located at: ${state.config.path}`)
