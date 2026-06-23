@@ -98,13 +98,12 @@ describe("commandPresets", () => {
     }
     
     // @ts-ignore
-    await commandPresets(state, args);
+    const output = await commandPresets(state, args);
 
     if (args.length > 0) {
       if (args[0] === "delete") {
         if (test_path === "success") {
-          expect(successSpy).toHaveBeenCalledTimes(1);
-          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted all your presets and goals from the database!`)
+          expect(output).toMatch(/Success/)
         }
       }
     } else {

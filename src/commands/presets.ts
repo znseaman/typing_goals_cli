@@ -5,17 +5,17 @@ import { logger } from "../ui/logger.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
-export async function commandPresets(state: State, args?: string[]): Promise<void> {
+export async function commandPresets(state: State, args?: string[]): Promise<string | void> {
   if (args && args.length) {
     const [subcommand] = args
     switch (subcommand) {
       case "delete":
         try {
-          await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
+          return await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
             const confirm = await read({prompt: "Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): ", default: "n", silent: false});
             if (confirm.toLowerCase() !== "y") return
             await state.query.deletePresets(state)
-            logger.success(`Successfully deleted all your presets and goals from the database!`)
+            return `Successfully deleted all your presets and goals from the database!`
           })
         } catch (error) {
           logger.error(`Unable to delete presets: ${(error as Error)?.message}`)

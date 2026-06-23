@@ -14,7 +14,6 @@ const allResults1 = [{tags: ["tagId1"], restartCount: 1, testDuration: 15, incom
 const goalsObject1 = {tagId1: {count: 1, goal: 2, goalName: "Goal 1", goalType: "count", goalTimeFrame: "daily", goalTotalTime: 2, goalTotalTests: 2, name: "Preset 1", pb: 50, pbTimestamp: 1781636303784, failedAttempts: 1, totalSeconds: 30, presetConfig: {mode: "words", words: 25}}}
 
 const goals2 = [{tagId: "tagId2", presetId: "presetId2", measure: 2, name: "Goal 2", type: "count", timeframe: "daily", presetName: "Preset 2"}]
-const tags2 = [{_id: "tagId2", personalBests: `{ "words": { "25": [{ "wpm": 50, "timestamp": 1781636303784 }] } }`}]
 const presets2 = [{_id: "presetId2", config: `{"mode": "words", "words": 25}`, name: "Preset 2", tagId: "tagId2"}]
 
 // globally mock the "read" module
@@ -478,77 +477,77 @@ describe("commandGoals", () => {
     }
 
     // @ts-ignore
-    await commandGoals(state, args)
+    const output = await commandGoals(state, args)
 
     if (args.length > 0) {
 
-      expect(successSpy).toHaveBeenCalledTimes(1)
+      expect(output).toMatch(/Success/)
 
       if (args[0] === "create") {
         if (test_path === "success") {
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 1"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 1"`)
         } else if (test_path === "invalid goal name entered") {
           expect(errorSpy).toHaveBeenCalledWith(`Please enter a valid goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 1"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 1"`)
         } else if (test_path === "goal name already exists") {
           expect(errorSpy).toHaveBeenCalledWith(`Goal already exists. Please enter another goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "invalid goal type entered") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no goal type, "${goal.name}". Enter in either "time" or "count" as a goal type`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "invalid goal measure entered") {
           expect(errorSpy).toHaveBeenCalledWith(`Invalid number of tests entered "${goal.name}". Enter in a valid number greater than 0.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "no preset found") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no preset with the name "" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "no tag found") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no tag associated with preset "${presets[0].name}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "already a goal associated with this preset") {
           expect(errorSpy).toHaveBeenCalledWith(`There is already a goal "${goals[0].name}" associated with this preset. Enter another preset name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully created a new goal named "Goal 2"`)
+          expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         }
       } else if (args[0] === "edit") {
         if (test_path === "success") {
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid goal name") {
           expect(errorSpy).toHaveBeenCalledWith(`Please enter a valid goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "no goal associated with this account") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no goal "Goal 999" associated with this account. Enter another goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "new goal name already exists") {
           expect(errorSpy).toHaveBeenCalledWith(`There is already a goal "Goal 2" associated with this account. Enter a different new goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal name entered") {
           expect(errorSpy).toHaveBeenCalledWith(`Please enter a new valid goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal type") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no goal type, "". Enter in either "time" or "count" as a goal type`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal measure") {
           expect(errorSpy).toHaveBeenCalledWith(`Invalid number of tests entered "". Enter in a valid number greater than 0.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal preset name - existing goal with this preset") {
           expect(errorSpy).toHaveBeenCalledWith(`There is already a goal "${goals[1].name}" associated with this preset. Enter another preset name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal preset name - no preset") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no preset with the name "" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         } else if (test_path === "invalid new goal preset name - no tag") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no tag associated with preset "${presets[1].name}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully edited the goal named "Goal 1.1"`)
+          expect(output).toBe(`Successfully edited the goal named "Goal 1.1"`)
         }
       } else if (args[0] === "delete") {
         if (test_path === "success") {
-          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted the goal named "Goal 1"`)
+          expect(output).toBe(`Successfully deleted the goal named "Goal 1"`)
         } else if (test_path === "invalid goal name") {
           expect(errorSpy).toHaveBeenCalledWith(`Please enter a valid goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted the goal named "Goal 1"`)
+          expect(output).toBe(`Successfully deleted the goal named "Goal 1"`)
         } else if (test_path === "no goal associated with this account") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no goal "Goal 2" associated with this account. Please enter another goal name.`)
-          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted the goal named "Goal 1"`)
+          expect(output).toBe(`Successfully deleted the goal named "Goal 1"`)
         }
       }
 

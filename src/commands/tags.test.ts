@@ -58,13 +58,12 @@ describe("commandTags", () => {
     }
     
     // @ts-ignore
-    await commandTags(state, args);
+    const output = await commandTags(state, args);
 
     if (args.length > 0) {
       if (args[0] === "delete") {
         if (test_path === "success") {
-          expect(successSpy).toHaveBeenCalledTimes(1);
-          expect(successSpy).toHaveBeenCalledWith(`Successfully deleted all your tags and goals from the database!`)
+          expect(output).toMatch(/Success/)
         }
       }
     } else {

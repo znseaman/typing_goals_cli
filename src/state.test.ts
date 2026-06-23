@@ -158,6 +158,9 @@ describe("initializeReadlineHandlers", () => {
       close: vi.fn()
     }
 
+    // suppress all the "✅ true" statements on tests
+    const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {})
+
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
     const loginCommand = vi.spyOn(state.commands.login, "execute").mockResolvedValue(true)
     const exitCommand = vi.spyOn(state.commands.exit, "execute").mockImplementationOnce(() => {})
@@ -176,6 +179,7 @@ describe("initializeReadlineHandlers", () => {
     expect(commandHistoryPush).toHaveBeenCalledTimes(1)
     expect(loginCommand).toHaveBeenCalledTimes(1)
 
+    successSpy.mockRestore()
     infoSpy.mockRestore()
     loginCommand.mockRestore()
     exitCommand.mockRestore()

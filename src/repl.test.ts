@@ -11,8 +11,6 @@ describe("startREPL", () => {
 
     // @ts-ignore
     await startREPL(state);
-    
-    expect(logSpy).toHaveBeenCalledTimes(1);
 
     expect(promptSpy).toHaveBeenCalledTimes(1);
 
@@ -46,7 +44,6 @@ describe("startREPL", () => {
     expect(isTokenValid).toHaveBeenCalledTimes(1);
     expect(getConfig).toHaveBeenCalledTimes(2);
     expect(setConfig).toHaveBeenCalledTimes(1);
-    expect(logSpy).toHaveBeenCalledTimes(1);
     expect(promptSpy).toHaveBeenCalledTimes(1);
 
     isTokenValid.mockRestore();

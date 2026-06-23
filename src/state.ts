@@ -20,7 +20,7 @@ export type CLICommand = {
   usage?: string;
   examples?: string[];
   description: string;
-  execute: (state: State, args?: string[]) => Promise<void>;
+  execute: (state: State, args?: string[]) => Promise<string | void>;
 }
 
 export type State = {
@@ -98,7 +98,8 @@ export function initializeReadlineHandlers(state: State): void {
     // add command name to command history
     state.commandHistory.push(commandName)
 
-    if (commandName !== "login" && commandName !== "config" && commandName !== "doctor" && commandName !== "help" && commandName !== "exit") {
+    const allowCommandWithoutLogin = commandName !== "login" && commandName !== "config" && commandName !== "doctor" && commandName !== "help" && commandName !== "exit" && commandName !== "db" && (commandName in state.commands)
+    if (allowCommandWithoutLogin) {
       // Bypass if under expires in
       if (!state.config.isTokenValid()) {
         // Try to refresh their token using refresh token
@@ -129,9 +130,12 @@ export function initializeReadlineHandlers(state: State): void {
 
     if (command) {
       try {
-        await command.execute(state, args);
+        const output = await command.execute(state, args);
+        if (output) {
+          logger.success(output)
+        }
       } catch (error) {
-        logger.error(`Error executing "${commandName}" command: ${error}`);
+        logger.error(`Error executing "${commandName}" command: ${(error as Error).message}`);
       }
     } else {
       logger.warn(`Unknown command: "${commandName}". Type "help" for a list of commands.`);
@@ -162,17 +166,19 @@ export async function removeReadline(state: State) {
 
 // A control mechanism given only one readline can exist
 // This solves for wanting to use another "readline"-like package but Node.js having limitations with readline
-export async function removeReadline_runNonReadline_addReadline(state: State, commandName: string, handler: () => Promise<void>) {
+export async function removeReadline_runNonReadline_addReadline(state: State, commandName: string, handler: () => Promise<string | void>) {
   removeReadline(state)
   
+  let output;
   try {
-    await handler()
+    output = await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
       logger.error(`An error occurred executing "${commandName}" command: ${(error as Error).message}`);
     }
   } finally {
     addReadline(state)
+    if (output) return output
   }
 }
 

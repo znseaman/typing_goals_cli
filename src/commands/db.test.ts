@@ -1,19 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { commandDb } from "./db.js";
 import { State } from "../state.test.js";
-import * as ps from "node:process"
 import * as drizzle from "drizzle-orm"
-
-// globally mock the "process" module
-vi.mock("node:process", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:process")>()
-  return {
-    ...actual,
-    env: {
-      ENVIRONMENT: ""
-    }, 
-  }
-})
 
 // globally mock the "sql" module
 vi.mock("drizzle-orm", async (importOriginal) => {
@@ -48,11 +36,8 @@ describe("commandDB", () => {
     {ENVIRONMENT: "prod"},
   ])("should fail to run db command when in production or when not specified", async ({ENVIRONMENT}) => {
     process.env.ENVIRONMENT = ENVIRONMENT
-
     // @ts-ignore
-    await commandDb(state);
-
-    expect(log).toHaveBeenCalledWith(`The "db" command is not allowed to be used in production!`);
+    await expect(() => commandDb(state)).rejects.toThrow(`This command is not allowed to be used in production!`)
   });
 
   test.each([
@@ -63,10 +48,10 @@ describe("commandDB", () => {
     const [...query] = args
 
     // @ts-ignore
-    await commandDb(state, args);
+    const output = await commandDb(state, args);
 
     expect(log).toHaveBeenNthCalledWith(1, `\nExecute SQL commands against your local database:\n`);
-    expect(log).toHaveBeenNthCalledWith(2, `SQL Query Result\n`);
+    expect(output).toMatch(/SQL Query Result/);
     expect(raw).toHaveBeenNthCalledWith(1, query.join(" "))
   });
 });

@@ -4,7 +4,6 @@ import { logger } from "../ui/logger.js";
 import { commandConfig } from "./config.js";
 import * as fs from "node:fs/promises"
 
-// fs.readFile
 // globally mock the "read" module
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>()
@@ -35,19 +34,9 @@ describe("commandConfig", () => {
     const configDeleteSpy = vi.spyOn(state.config, "delete").mockImplementation(() => {});
 
     const mockReadFile = vi.mocked(fs.readFile).mockResolvedValue("{}")
-
-    if (args.length > 0) {
-      if (args[0] === "delete") {
-        if (test_path === "success") {
-          // vi.mocked(read).mockResolvedValue("y")
-        }
-      }
-    } else {
-      
-    }
     
     // @ts-ignore
-    await commandConfig(state, args);
+    const output = await commandConfig(state, args);
 
     if (args.length > 0) {
       if (args[0] === "get") {
@@ -59,6 +48,7 @@ describe("commandConfig", () => {
         if (test_path === "success") {
           expect(configSetSpy).toHaveBeenCalledTimes(1);
           expect(configSetSpy).toHaveBeenCalledWith("idToken", "xxxxxx")
+          expect(output).toMatch(/Success/)
         } else if (test_path === "error") {
           expect(infoSpy).toHaveBeenCalledTimes(1);
           expect(infoSpy).toHaveBeenCalledWith(`Usage: config ${args[0]} <field> <value>`)
@@ -67,6 +57,7 @@ describe("commandConfig", () => {
         if (test_path === "success") {
           expect(configDeleteSpy).toHaveBeenCalledTimes(1);
           expect(configDeleteSpy).toHaveBeenNthCalledWith(1, "idToken")
+          expect(output).toMatch(/Success/)
         }
       } else if (args[0] === "path") {
         if (test_path === "success") {

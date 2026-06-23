@@ -5,7 +5,7 @@ import { logger } from "../ui/logger.js"
 import { sql } from "drizzle-orm"
 import { QueryResult } from "pg"
 
-export async function commandDoctor(state: State, args?: string[]): Promise<void> {
+export async function commandDoctor(state: State, args?: string[]): Promise<string | void> {
   let nodeVersionFromFile = "";
   const filePath = path.join(import.meta.dirname, '..', '..', '.nvmrc')
   try {
@@ -33,6 +33,6 @@ export async function commandDoctor(state: State, args?: string[]): Promise<void
   logger[hasValidToken ? "success": "error"](`MonkeyType account for ${state.config.get("displayName") || ""}${hasValidToken ? "" : `: Type \`login\` to reconnect`}`)
 
   if (correctNodeVersion && correctPostgreSQLVersion && hasValidToken) {
-    logger.success("Basic checks passed.");
+    return `Successfully passed all basic checks!`
   }
 }

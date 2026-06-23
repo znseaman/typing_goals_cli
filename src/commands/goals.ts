@@ -33,21 +33,18 @@ export const defaultGoalOptions = {
   }
 }
 
-export async function commandGoals(state: State, args?: string[]): Promise<void> {
+export async function commandGoals(state: State, args?: string[]): Promise<string | void> {
   
   // @ts-ignore
   const [crudType, ...crudArgs] = args
 
   switch (crudType) {
     case "create":
-      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => create(state, crudArgs as string[]))
-      break;
+      return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => create(state, crudArgs as string[]))
     case "edit":
-      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => editGoal(state, crudArgs as string[]))
-      break;
+      return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => editGoal(state, crudArgs as string[]))
     case "delete":
-      await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
-      break;
+      return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
     default:
       // @ts-ignore
       const [isVerbose] = args
@@ -135,7 +132,7 @@ export function createGoalsObject(goals: Array<GoalWithPresetAndTag>, tags: Arra
   return goalsObj;
 }
 
-async function create(state: State, args?: string[]) {
+async function create(state: State, args?: string[]): Promise<string | void> {
   let [name, type, measure, presetName] = args || ["", "", "", ""]
 
   const goals = await state.query.getGoalsByUserId(state)
@@ -238,10 +235,10 @@ async function create(state: State, args?: string[]) {
 
   const goal = await state.query.createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
 
-  logger.success(`Successfully created a new goal named "${goal.name}"`)
+  return `Successfully created a new goal named "${goal.name}"`
 }
 
-async function editGoal(state: State, args?: string[]) {
+async function editGoal(state: State, args?: string[]): Promise<string | void> {
   let [name, type, measure, presetName] = args || ["", "", "", ""]
 
   const goals = await state.query.getGoalsByUserId(state)
@@ -372,10 +369,10 @@ async function editGoal(state: State, args?: string[]) {
   // @ts-ignore
   const goal = await state.query.editGoalById(state, (existingGoal as GoalWithPresetAndTag).id, String(state.config.get("localId")), toSet)
 
-  logger.success(`Successfully edited the goal named "${goal.name}"`)
+  return `Successfully edited the goal named "${goal.name}"`
 }
 
-async function deleteGoal(state: State, args?: string[]) {
+async function deleteGoal(state: State, args?: string[]): Promise<string | void> {
   let [name] = args || [""]
 
   const goals = await state.query.getGoalsByUserId(state)
@@ -400,7 +397,7 @@ async function deleteGoal(state: State, args?: string[]) {
 
   let goal = await state.query.deleteGoalByName(state, name, String(state.config.get("localId")))
 
-  logger.success(`Successfully deleted the goal named "${goal.name}"`)
+  return `Successfully deleted the goal named "${goal.name}"`
 }
 
 export function printGoalsTable(

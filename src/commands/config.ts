@@ -3,7 +3,7 @@ import type { State } from "../state.js";
 import { logger } from "../ui/logger.js";
 import { initializeDB } from "../db/index.js";
 
-export async function commandConfig(state: State, args?: string[]): Promise<void> {
+export async function commandConfig(state: State, args?: string[]): Promise<string | void> {
   if (args && args.length) {
     const [command, field, ...value] = args
     const commandRequiresField = command == "get" || command == "set" || command == "delete"
@@ -24,7 +24,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
       case "get":
         const result = state.config.get(field)
         if (!result) {
-          console.error(`The "${field}" field does not exist in the config`)
+          logger.error(`The "${field}" field does not exist in the config`)
           return
         }
         console.log(`${JSON.stringify(result, null, 2)}`)
@@ -34,7 +34,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
         try {
           state.config.set(field, parsedValue)
         } catch (error) {
-          console.error(`Unable to set value to field "${field}": ${error}`)
+          logger.error(`Unable to set value to field "${field}": ${error}`)
           return
         }
 
@@ -42,12 +42,12 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
           state.db = await initializeDB(state.config)
         }
 
-        return
+        return `Successfully set "${field}" in your config!`
       case "delete":
         try {
           state.config.delete(field)
         } catch (error) {
-          console.error(`Unable to delete field "${field}": ${error}`)
+          logger.error(`Unable to delete field "${field}": ${error}`)
           return
         }
 
@@ -55,12 +55,12 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
           state.db = await initializeDB(state.config)
         }
 
-        return
+        return `Successfully deleted field "${field}" from your config!`
       case "path":
         logger.info(`This config is located at: ${state.config.path}`)
         return
       default:
-        console.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path`)
+        logger.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path`)
         return
     }
   }
@@ -69,14 +69,14 @@ export async function commandConfig(state: State, args?: string[]): Promise<void
   try {
     userConfig = await fs.readFile(state.config.path, "utf8")
   } catch {
-    console.error(`Failed to read config file at ${state.config.path}. Please make sure the file exists and is readable.`)
+    logger.error(`Failed to read config file at ${state.config.path}. Please make sure the file exists and is readable.`)
   }
 
   let json;
   try {
     json = JSON.parse(userConfig)
   } catch {
-    console.error(`Failed to parse config file at ${state.config.path}. Please make sure the file contains valid JSON.`)
+    logger.error(`Failed to parse config file at ${state.config.path}. Please make sure the file contains valid JSON.`)
   }
 
   logger.info(`Path: ${state.config.path}`)

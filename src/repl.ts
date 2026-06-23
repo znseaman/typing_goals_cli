@@ -42,14 +42,16 @@ export async function startREPL(state: State) {
   }
 }
 
-async function promptBeforeInitialization(handler: () => Promise<void>): Promise<boolean> {
+async function promptBeforeInitialization(handler: () => Promise<string | void>): Promise<boolean> {
+  let output;
   try {
-    await handler()
+    output = await handler()
   } catch (error) {
     if ((error as Error).message !== "canceled") {
       logger.error(`${(error as Error).message}. Please try again.`)
     }
   } finally {
+    logger.success((output as string))
     return true
   }
 }

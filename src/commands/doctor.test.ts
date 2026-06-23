@@ -1,22 +1,10 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { commandDoctor } from "./doctor.js";
 import { State } from "../state.test.js";
-import * as ps from "node:process"
 import * as drizzle from "drizzle-orm"
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
 import { logger } from "../ui/logger.js";
-
-// globally mock the "process" module
-vi.mock("node:process", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:process")>()
-  return {
-    ...actual,
-    env: {
-      POSTGRES_DB_VERSION: ""
-    },
-  }
-})
 
 // globally mock the "sql" module
 vi.mock("drizzle-orm", async (importOriginal) => {
@@ -62,9 +50,7 @@ describe("commandDoctor", () => {
   beforeEach(() => {
     state = new State();
     log = vi.spyOn(console, "log").mockImplementation(() => {});
-    // execute = vi.spyOn(state.db, "execute").mockImplementation(() => {});
     raw = vi.spyOn(drizzle.sql, "raw").mockImplementation(() => ({} as any));
-    // readFile = vi.mocked(fs.readFile);
     pathJoin = vi.mocked(path.join).mockResolvedValue("");
     successSpy = vi.spyOn(logger, "success").mockImplementation(() => {});
     errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
@@ -87,7 +73,7 @@ describe("commandDoctor", () => {
     process.env.POSTGRES_DB_VERSION = POSTGRES_DB_VERSION;
 
     // @ts-ignore
-    await commandDoctor(state);
+    const output = await commandDoctor(state);
 
     if (test_path === "error") {
       expect(errorSpy).toHaveBeenNthCalledWith(1, `NodeJS ${NODE_VERSION}: (Run \`nvm install ${NODE_VERSION} && nvm use ${NODE_VERSION}\`)`)
@@ -95,7 +81,7 @@ describe("commandDoctor", () => {
       expect(successSpy).toHaveBeenNthCalledWith(1, `NodeJS ${NODE_VERSION}`)
       expect(successSpy).toHaveBeenNthCalledWith(2, `PostgreSQL ${POSTGRES_DB_VERSION}`)
       expect(successSpy).toHaveBeenNthCalledWith(3, `MonkeyType account for ${displayName}`)
-      expect(successSpy).toHaveBeenNthCalledWith(4, `Basic checks passed.`)
+      expect(output).toMatch(/Success/)
     }
   });
 });

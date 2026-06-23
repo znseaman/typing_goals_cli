@@ -1,7 +1,6 @@
 
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
-import { createUser, getUserById } from "../db/queries/users.js";
 import { savePresetsAndTags } from "./presets.js";
 import { logger } from "../ui/logger.js";
 
@@ -17,7 +16,7 @@ export interface LoginResponse {
   registered: boolean
 }
 
-export async function commandLogin(state: State, args?: string[]): Promise<void> {
+export async function commandLogin(state: State, args?: string[]): Promise<string | void> {
   const hasValidToken = state.config.isTokenValid()
   if (hasValidToken) {
     logger.info(`You're already logged into your MonkeyType account!`)
@@ -26,7 +25,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
 
   console.log("\nLet's connect your MonkeyType account to the CLI!\n")
 
-  const handler = async () => {
+  const handler = async (): Promise<string | void> => {
     let email: string
     if (!args || !args.length) {
       // TODO: get their default if it exists in config
@@ -61,11 +60,11 @@ export async function commandLogin(state: State, args?: string[]): Promise<void>
         }
       }
 
-      logger.success(`Successfully connected your MonkeyType account to the CLI!`)
-
       await savePresetsAndTags(state, false, false)
+
+      return `Successfully connected your MonkeyType account to the CLI!`
     }
   }
 
-  await removeReadline_runNonReadline_addReadline(state, `login`, handler)
+  return await removeReadline_runNonReadline_addReadline(state, `login`, handler)
 }
