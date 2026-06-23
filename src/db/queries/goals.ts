@@ -11,7 +11,8 @@ export type GoalsQueries = {
   getGoalsByUserId: (state: State) => Promise<Array<GoalWithPresetAndTag>>,
   getGoalByName: (state: State, name: string) => Promise<GoalWithPresetAndTag | boolean>,
   createGoal: (state: State, name: string, type: "time" | "count", measure: number, presetId: string, userId: string, timeframe: string) => Promise<Goal>,
-  deleteGoalByName: (state: State, name: string, userId: string) => Promise<{name: string}>
+  deleteGoalByName: (state: State, name: string, userId: string) => Promise<{name: string}>,
+  editGoalById: (state: State, id: string, userId: string, toSet: {name?: string, type?: "time" | "count", measure?: number, presetId?: string, timeframe?: string, totalTests?: number}) => Promise<{name: string}>
 }
 
 // eslint-disable-next-line max-params
@@ -51,4 +52,5 @@ export default {
   getGoalByName,
   createGoal,
   deleteGoalByName,
+  editGoalById,
 } as GoalsQueries
