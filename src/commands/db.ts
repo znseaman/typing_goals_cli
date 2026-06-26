@@ -1,5 +1,6 @@
 import { isProduction, type State } from "../state.js"
 import { sql } from "drizzle-orm"
+import { logger } from "../ui/logger.js"
 
 export async function commandDb(state: State, args?: string[]): Promise<string> {
   const isProd = isProduction()
@@ -7,7 +8,7 @@ export async function commandDb(state: State, args?: string[]): Promise<string> 
     throw new Error(`This command is not allowed to be used in production!`)
   }
 
-  console.log("\nExecute SQL commands against your local database:\n")
+  logger.log("\nExecute SQL commands against your local database:\n")
 
   // @ts-ignore
   const [...query] = args

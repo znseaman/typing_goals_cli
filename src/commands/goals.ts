@@ -6,7 +6,7 @@ import { PresetObject } from "../db/queries/presets.js";
 import { TagObject } from "../db/queries/tags.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
-import { logger } from "../ui/logger.js";
+import { boldText, logger } from "../ui/logger.js";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -141,7 +141,7 @@ async function create(state: State, args?: string[]): Promise<string | void> {
 
   let validatedName = false
   while (!name || !validatedName) {
-    if (!name) name = await read({prompt: "Enter goal name: "});
+    if (!name) name = await read({prompt: boldText("Enter goal name: ")});
     if (name === "") {
       logger.error("Please enter a valid goal name.")
       continue
@@ -161,7 +161,7 @@ async function create(state: State, args?: string[]): Promise<string | void> {
   let def = defaultGoalOptions.type
   let validatedType = false
   while (!type || !validatedType) {
-    if (!type) type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
+    if (!type) type = await read({prompt: boldText(`Enter${editing ? " new " : " "}goal type (time, count): `), default: def});
 
     try {
       type = validateType(type)
@@ -176,8 +176,8 @@ async function create(state: State, args?: string[]): Promise<string | void> {
   let validatedMeasure = false
   while (!measure || !validatedMeasure) {
     measure = type === "time" ? 
-      await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: defaultGoalOptions.measure.time}) :
-      await read({prompt: `Enter number of tests to complete goal: `, default: defaultGoalOptions.measure.count})
+      await read({prompt: boldText(`Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `), default: defaultGoalOptions.measure.time}) :
+      await read({prompt: boldText(`Enter number of tests to complete goal: `), default: defaultGoalOptions.measure.count})
 
     try {
       measure = validateMeasure(measure, type)
@@ -200,7 +200,7 @@ async function create(state: State, args?: string[]): Promise<string | void> {
 
   while (!presetName || !validatedPresetName) {
     if (!presetName) {
-      presetName = await read({prompt: "Enter preset name to connect this goal to: ", completer: createCompleter(availablePresetNames)});
+      presetName = await read({prompt: boldText("Enter preset name to connect this goal to: "), completer: createCompleter(availablePresetNames)});
     }
 
     for (const preset of presets) {
@@ -247,7 +247,7 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
 
   let existingGoal: GoalWithPresetAndTag | boolean = false
   while (!existingGoal) {
-    if (!name) name = await read({prompt: "Enter goal name to edit: ", completer: createCompleter(goals.map((goal) => goal.name))});
+    if (!name) name = await read({prompt: boldText("Enter goal name to edit: "), completer: createCompleter(goals.map((goal) => goal.name))});
     if (name === "") {
       logger.error("Please enter a valid goal name.")
       continue
@@ -264,7 +264,7 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
   let newName = ""
   let noExistingGoal: GoalWithPresetAndTag | boolean = true
   while (noExistingGoal) {
-    newName = await read({prompt: "Enter the new goal name: ", default: name});
+    newName = await read({prompt: boldText("Enter the new goal name: "), default: name});
     if (newName === "") {
       logger.error("Please enter a new valid goal name.")
       continue
@@ -286,7 +286,7 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
   let def = (existingGoal as GoalWithPresetAndTag).type
   let validatedType = false
   while (!type || !validatedType) {
-    type = await read({prompt: `Enter${editing ? " new " : " "}goal type (time, count): `, default: def});
+    type = await read({prompt: boldText(`Enter${editing ? " new " : " "}goal type (time, count): `), default: def});
     if (type !== "time" && type !== "count") {
       logger.error(`There is no goal type, "${type}". Enter in either "time" or "count" as a goal type`)
       type = ""
@@ -299,8 +299,8 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
   let validatedMeasure = false
   while (!measure || !validatedMeasure) {
     measure = type === "time" ? 
-      await read({prompt: `Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `, default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.time : convertMillisecondsToSimplifiedTime((existingGoal as GoalWithPresetAndTag).measure)}) :
-      await read({prompt: `Enter number of tests to complete goal: `, default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.count : String((existingGoal as GoalWithPresetAndTag).measure)})
+      await read({prompt: boldText(`Enter total time to complete tests associated with this goal (i.e. 10ms, 10s, 1m, 1h): `), default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.time : convertMillisecondsToSimplifiedTime((existingGoal as GoalWithPresetAndTag).measure)}) :
+      await read({prompt: boldText(`Enter number of tests to complete goal: `), default: (existingGoal as GoalWithPresetAndTag).type !== type ? defaultGoalOptions.measure.count : String((existingGoal as GoalWithPresetAndTag).measure)})
 
     try {
       measure = validateMeasure(measure, type)
@@ -325,7 +325,7 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
   }, [ oldPresetName ] as string[])
 
   while (!presetName || !validatedPresetName) {
-    if (!presetName) presetName = await read({prompt: "Enter new preset name to connect this goal to: ", default: oldPresetName, completer: createCompleter(availablePresetNames)});
+    if (!presetName) presetName = await read({prompt: boldText("Enter new preset name to connect this goal to: "), default: (oldPresetName as string), completer: createCompleter(availablePresetNames)});
 
     // only check if the preset names have changed
     if (oldPresetName !== presetName) {
@@ -379,7 +379,7 @@ async function deleteGoal(state: State, args?: string[]): Promise<string | void>
 
   let validatedName = false
   while (!name || !validatedName) {
-    if (!name) name = await read({prompt: "Enter goal name to delete: ", completer: createCompleter(goals.map((goal) => goal.name))});
+    if (!name) name = await read({prompt: boldText("Enter goal name to delete: "), completer: createCompleter(goals.map((goal) => goal.name))});
     if (name === "") {
       logger.error("Please enter a valid goal name.")
       continue
@@ -406,7 +406,7 @@ export function printGoalsTable(
   verbose?: boolean
 ) {
   const startOfTodayUTC = getStartOfTodayUTC()
-  console.log(`\nToday's Goals (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
+  logger.log(`\nToday's Goals 🥅 (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
 
   const objects = []
   for (let goal of goals) {

@@ -15,7 +15,7 @@ export async function promptDbURL(config: Conf): Promise<string> {
   // Check database connection
   let dbURL = String(config.get("dbURL") || "")
   if (!dbURL) {
-    console.log(`\nPlease enter your database url to use for the CLI obtained from the pre-setup process\n`)
+    logger.log(`\nPlease enter your database url to use for the CLI obtained from the pre-setup process\n`)
     try {
       dbURL = await read({prompt: "Enter url: ", silent: false});
       config.set("dbURL", dbURL)

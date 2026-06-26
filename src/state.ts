@@ -1,5 +1,4 @@
 import { stdin, stdout } from "node:process"
-// import * as readlineModule { createInterface, type Interface } from "node:readline"
 import * as readlineModule from "node:readline"
 import { Commands, getCommands } from "./command.js";
 import { MonkeyType, monkeytype, refreshToken } from "./monkeytype.js";
@@ -86,12 +85,19 @@ export function initializeReadline(commandList: Array<string>, history: string[]
     output: stdout,
     completer: completer,
     history: history,
-    prompt: "> ",
+    prompt: "❯ ",
   })
 }
 
 export function initializeReadlineHandlers(state: State): void {
   state.readline.on("line", async (line) => {
+    if (!line.trim()) {
+      readlineModule.moveCursor(stdout, 0, -1)
+      readlineModule.clearLine(stdout, 0)
+      state.readline.prompt()
+      return
+    }
+
     const [commandName, ...args] = line.trim().split(/\s+/);
     const command = state.commands[commandName];
 
@@ -106,7 +112,7 @@ export function initializeReadlineHandlers(state: State): void {
         const token = String(state.config.get("refreshToken") || "")
         if (!token) {
           logger.info(`Type "login" to reconnect.`)
-          state.readline.prompt();
+          showPrompt(state)
           return
         }
     
@@ -122,7 +128,7 @@ export function initializeReadlineHandlers(state: State): void {
           state.config.setConfig(data)
         } catch {
           logger.info(`Type "login" to reconnect.`)
-          state.readline.prompt();
+          showPrompt(state)
           return
         }
       }
@@ -141,12 +147,18 @@ export function initializeReadlineHandlers(state: State): void {
       logger.warn(`Unknown command: "${commandName}". Type "help" for a list of commands.`);
     }
 
-    state.readline.prompt();
+    showPrompt(state)
   }).on("close", async () => {
     if (state.stopFullExit) return
-    console.log(``)
+    logger.log(``)
     await state.commands["exit"].execute(state)
   })
+}
+
+export function showPrompt(state: State) {
+  stdout.write("\n")
+  state.readlineModule.moveCursor(stdout, 0, -1)
+  state.readline.prompt()
 }
 
 export async function addReadline(state: State) {

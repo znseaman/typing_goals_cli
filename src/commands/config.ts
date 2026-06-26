@@ -27,7 +27,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
           logger.error(`The "${field}" field does not exist in the config`)
           return
         }
-        console.log(`${JSON.stringify(result, null, 2)}`)
+        logger.log(`${JSON.stringify(result, null, 2)}`)
         return
       case "set":
         const parsedValue = parseStringValue(value.join(""))

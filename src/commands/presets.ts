@@ -86,7 +86,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
           // verify that there's only one tag in the preset
           if (preset?.config?.tags?.length != 1) {
-            console.log(`Skipping preset "${preset.name}" due to the number of tags: ${preset?.config?.tags?.length}. There can only be one tag in a preset.`)
+            logger.log(`Skipping preset "${preset.name}" due to the number of tags: ${preset?.config?.tags?.length}. There can only be one tag in a preset.`)
             continue
           }
 
@@ -100,7 +100,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
             // if this tag doesn't exist on MonkeyType, skip adding the preset (the tagId in the preset?.config?.tags shouldn't be there and you should try resetting the preset or create a new one due to data integrity)
             if (foundTag.length === 0) {
-              console.log(`Skipping preset "${preset.name}" due to the tag with id "${tagId}" not existing on MonkeyType. Try re-saving your preset on MonkeyType with another tag.`)
+              logger.log(`Skipping preset "${preset.name}" due to the tag with id "${tagId}" not existing on MonkeyType. Try re-saving your preset on MonkeyType with another tag.`)
               continue
             }
           }
@@ -124,7 +124,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       const goals = await state.query.getGoalsByUserId(state)
 
       const objects = []
-      console.log(`\nYour Presets:`)
+      logger.log(`\nYour Presets 🔧:`)
       for (let preset of presets.data) {
         let presetConfig = preset?.config
         let mode = presetConfig?.mode
@@ -158,7 +158,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       tags.data.sort((a: TagResponse, b: TagResponse) => a.name.localeCompare(b.name))
 
       const objects = []
-      console.log(`\nYour Tags:`)
+      logger.log(`\nYour Tags 🏷️:`)
       for (let tag of tags.data) {
         let preset = presets?.data.find((preset) => preset?.config?.tags?.join('') === tag._id)
         let presetConfig = preset?.config

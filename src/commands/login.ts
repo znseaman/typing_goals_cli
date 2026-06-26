@@ -2,7 +2,7 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { savePresetsAndTags } from "./presets.js";
-import { logger } from "../ui/logger.js";
+import { boldText, logger } from "../ui/logger.js";
 
 export interface LoginResponse {
   displayName: string
@@ -23,7 +23,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<strin
     return
   }
 
-  console.log("\nLet's connect your MonkeyType account to the CLI!\n")
+  logger.log("\nLet's connect your MonkeyType account to the CLI!\n")
 
   const handler = async (): Promise<string | void> => {
     let email: string
@@ -31,7 +31,7 @@ export async function commandLogin(state: State, args?: string[]): Promise<strin
       // TODO: get their default if it exists in config
       const defaultEmail = String(state.config.get("email"))
       const options = {
-        prompt: "Enter email: ",
+        prompt: boldText("Enter email: "),
         silent: false,
         ...(defaultEmail && { default: defaultEmail }), 
       }
@@ -39,8 +39,8 @@ export async function commandLogin(state: State, args?: string[]): Promise<strin
     } else {
       [email] = args
     }
-    const password = await read({prompt: "Enter password: ", silent: true, replace: "*"});
-    const rememberMe = await read({prompt: "Remember Me (y/n): ", default: "y", silent: false});
+    const password = await read({prompt: boldText("Enter password: "), silent: true, replace: "*"});
+    const rememberMe = await read({prompt: boldText("Remember Me (y/n): "), default: "y", silent: false});
 
     let response = await state.monkeytype.login(email, password)
 

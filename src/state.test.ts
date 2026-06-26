@@ -41,6 +41,7 @@ export const State = vi.fn(
     readlineModule = {
       cursorTo: vi.fn(),
       clearScreenDown: vi.fn(),
+      moveCursor: vi.fn(),
     };
     readline = {
       prompt: vi.fn(),

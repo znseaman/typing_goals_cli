@@ -1,6 +1,5 @@
 import type { State } from "../state.js"
 import { ResultsResponse, ResultResponse } from "../monkeytype.js"
-import { createResult, getResultById } from "../db/queries/results.js";
 import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
 import { logger } from "../ui/logger.js";
 
@@ -20,7 +19,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
   }
 
   const startOfTodayUTC = getStartOfTodayUTC()
-  console.log(`\nToday's Results (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
+  logger.log(`\nToday's Results ⌨️ (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
   printResultsTable(allResults, tagsObj)
 
   let totalSeconds = 0
