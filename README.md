@@ -95,7 +95,7 @@ npm start
 
 ## Features
 
-1. Tab autocompletion: when typing a command in the CLI, allow for the user to press tab to complete the command. For example, typing "go" + Tab will autocomplete to "goals". If no matches are found, the list of commands will be displayed below.
+1. Inline autocompletion with ghost text: when typing a command in the CLI, the first matching option will appear inline as ghost text with the additional matching suggestions displayed below.
 2. Command history: arrow up and down through previous commands entered in the CLI.
 3. Remember me: keeps you logged in by using your refresh token to get a new access token when your access token expires.
 4. Create goals associated with presets: keep track of meeting a goal based on completing tests with tags associated with a preset.

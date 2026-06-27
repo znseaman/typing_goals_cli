@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from "vitest";
-import { initializeReadlineHandlers, initializeState } from "./state.js";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { initializeReadlineHandlers, initializeState, getFullCommandList } from "./state.js";
 import { logger } from "./ui/logger.js";
 import { RefreshTokenResponse } from "./monkeytype.js";
 
@@ -49,6 +49,7 @@ export const State = vi.fn(
           return this
       },
       close: vi.fn(),
+      write: vi.fn(),
     };
     commandHistory = [];
     commands = {
@@ -149,14 +150,9 @@ describe("initializeReadlineHandlers", () => {
 
     const callbacks: { [event: string]: Function } = {};
 
-    state.readline = {
-      // @ts-ignore
-      on: function(event: string, callback: Function) {
-        callbacks[event] = callback;
-        return this
-      },
-      prompt: vi.fn(),
-      close: vi.fn()
+    state.readline.on = function(event: string, callback: Function) {
+      callbacks[event] = callback;
+      return this
     }
 
     // suppress all the "✅ true" statements on tests
@@ -194,14 +190,9 @@ describe("initializeReadlineHandlers", () => {
 
     const callbacks: { [event: string]: Function } = {};
 
-    state.readline = {
-      // @ts-ignore
-      on: function(event: string, callback: Function) {
-        callbacks[event] = callback;
-        return this
-      },
-      prompt: vi.fn(),
-      close: vi.fn()
+    state.readline.on = function(event: string, callback: Function) {
+      callbacks[event] = callback;
+      return this
     }
 
     const exitCommand = vi.spyOn(state.commands.exit, "execute").mockImplementationOnce(() => {})
@@ -237,14 +228,9 @@ describe("initializeReadlineHandlers", () => {
 
     const callbacks: { [event: string]: Function } = {};
 
-    state.readline = {
-      // @ts-ignore
-      on: function(event: string, callback: Function) {
-        callbacks[event] = callback;
-        return this
-      },
-      prompt: vi.fn(),
-      close: vi.fn()
+    state.readline.on = function(event: string, callback: Function) {
+      callbacks[event] = callback;
+      return this
     }
 
     const exitCommand = vi.spyOn(state.commands.exit, "execute").mockImplementationOnce(() => {})
@@ -290,5 +276,185 @@ describe("initializeReadlineHandlers", () => {
     promptSpy.mockRestore()
     commandHistoryPush.mockRestore()
     isTokenValid.mockRestore()
+  });
+});
+
+describe("getFullCommandList", () => {
+  test("should include all base commands", () => {
+    const state = new State();
+    // @ts-ignore
+    const list = getFullCommandList(state.commands);
+    expect(list).toContain("goals");
+    expect(list).toContain("login");
+    expect(list).toContain("results");
+    expect(list).toContain("help");
+    expect(list).toContain("exit");
+  });
+
+  test("should expand optional subcommands from usage strings", () => {
+    const state = new State();
+    // @ts-ignore
+    const list = getFullCommandList(state.commands);
+    expect(list).toContain("goals -v");
+    expect(list).toContain("goals create");
+    expect(list).toContain("goals edit");
+    expect(list).toContain("goals delete");
+  });
+
+  test("should not include required argument placeholders as subcommands", () => {
+    const commands = {
+      foo: {
+        name: "foo",
+        description: "test",
+        usage: "foo <required_arg>",
+        execute: vi.fn(),
+      },
+    };
+    // @ts-ignore
+    const list = getFullCommandList(commands);
+    expect(list).toContain("foo");
+    expect(list).not.toContain("foo <required_arg>");
+    expect(list).not.toContain("<required_arg>");
+  });
+
+  test("should omit subcommands for commands with no usage", () => {
+    const state = new State();
+    // @ts-ignore
+    const list = getFullCommandList(state.commands);
+    // 'results' has no usage — should appear exactly once as the base command
+    expect(list.filter((c: string) => c === "results").length).toBe(1);
+  });
+});
+
+describe("keypressHandler", () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    process.stdin.removeAllListeners("keypress");
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    process.stdin.removeAllListeners("keypress");
+  });
+
+  function makeReadline(line = ""): any {
+    return {
+      on: vi.fn().mockReturnThis(),
+      prompt: vi.fn(),
+      close: vi.fn(),
+      write: vi.fn(),
+      line,
+      getCursorPos: vi.fn().mockReturnValue({ rows: 0, cols: line.length + 2 }),
+    };
+  }
+
+  test("ctrl+c clears input, writes 'exit', and submits", () => {
+    const state = new State();
+    state.readline = makeReadline();
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    process.stdin.emit("keypress", "", { ctrl: true, name: "c", meta: false, shift: false, sequence: "\x03" });
+
+    expect(state.readline.write).toHaveBeenCalledWith(null, { ctrl: true, name: "u" });
+    expect(state.readline.write).toHaveBeenCalledWith("exit");
+    expect(state.readline.write).toHaveBeenCalledWith(null, { name: "return" });
+  });
+
+  test("tab with no suggestions does not write to readline", () => {
+    const state = new State();
+    state.readline = makeReadline("");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    process.stdin.emit("keypress", "", { name: "tab", ctrl: false, meta: false, shift: false, sequence: "\t" });
+
+    expect(state.readline.write).not.toHaveBeenCalled();
+  });
+
+  test("tab cycles through suggestions and writes selected command to readline", async () => {
+    const state = new State();
+    state.readline = makeReadline("goa");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    // Populate suggestions for "goa" via a regular keypress followed by nextTick flush
+    process.stdin.emit("keypress", "a", { name: "a", ctrl: false, meta: false, shift: false, sequence: "a" });
+    await new Promise(resolve => process.nextTick(resolve));
+
+    // Tab should select the first suggestion and write it to readline
+    process.stdin.emit("keypress", "", { name: "tab", ctrl: false, meta: false, shift: false, sequence: "\t" });
+
+    expect(state.readline.write).toHaveBeenCalledWith(null, { ctrl: true, name: "u" });
+    expect(state.readline.write).toHaveBeenCalledWith("goals");
+  });
+
+  test("return with ghost text writes ghost suffix into readline before Enter is processed", async () => {
+    const state = new State();
+    state.readline = makeReadline("res");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    // "res" matches only "results" → single match → ghost text "ults" is set
+    process.stdin.emit("keypress", "s", { name: "s", ctrl: false, meta: false, shift: false, sequence: "s" });
+    await new Promise(resolve => process.nextTick(resolve));
+
+    process.stdin.emit("keypress", "", { name: "return", ctrl: false, meta: false, shift: false, sequence: "\r" });
+
+    expect(state.readline.write).toHaveBeenCalledWith("ults");
+  });
+
+  test("return without ghost text does not write to readline", () => {
+    const state = new State();
+    state.readline = makeReadline("");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    process.stdin.emit("keypress", "", { name: "return", ctrl: false, meta: false, shift: false, sequence: "\r" });
+
+    expect(state.readline.write).not.toHaveBeenCalled();
+  });
+
+  test("escape does not write to readline", async () => {
+    const state = new State();
+    state.readline = makeReadline("goa");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    // Populate suggestions first
+    process.stdin.emit("keypress", "a", { name: "a", ctrl: false, meta: false, shift: false, sequence: "a" });
+    await new Promise(resolve => process.nextTick(resolve));
+
+    process.stdin.emit("keypress", "", { name: "escape", ctrl: false, meta: false, shift: false, sequence: "\x1b" });
+
+    expect(state.readline.write).not.toHaveBeenCalled();
+  });
+
+  test("regular keypress triggers stdout writes for suggestion rendering after nextTick", async () => {
+    const state = new State();
+    state.readline = makeReadline("goa");
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    process.stdin.emit("keypress", "a", { name: "a", ctrl: false, meta: false, shift: false, sequence: "a" });
+    await new Promise(resolve => process.nextTick(resolve));
+
+    // "goa" matches multiple suggestions → stdout should have been written to for rendering
+    expect(stdoutSpy).toHaveBeenCalled();
+  });
+
+  test("empty line after keypress clears suggestions without writing to readline", async () => {
+    const state = new State();
+    const rl = makeReadline("");
+    state.readline = rl;
+    // @ts-ignore
+    initializeReadlineHandlers(state);
+
+    process.stdin.emit("keypress", "\x7f", { name: "backspace", ctrl: false, meta: false, shift: false, sequence: "\x7f" });
+    await new Promise(resolve => process.nextTick(resolve));
+
+    expect(state.readline.write).not.toHaveBeenCalled();
   });
 });
