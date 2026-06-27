@@ -42,6 +42,17 @@ describe("commandDB", () => {
   });
 
   test.each([
+    {ENVIRONMENT: "dev", args: undefined},
+    {ENVIRONMENT: "dev", args: []},
+  ])("should return usage message when no args provided", async ({ENVIRONMENT, args}) => {
+    process.env.ENVIRONMENT = ENVIRONMENT
+    // @ts-ignore
+    const output = await commandDb(state, args);
+    expect(output).toBe("Usage: db <sql query>");
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  test.each([
     {ENVIRONMENT: "dev", args: ["SELECT version()"]},
   ])("should successfully to run db command: $args", async ({ENVIRONMENT, args}) => {
     process.env.ENVIRONMENT = ENVIRONMENT

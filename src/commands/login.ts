@@ -28,7 +28,6 @@ export async function commandLogin(state: State, args?: string[]): Promise<strin
   const handler = async (): Promise<string | void> => {
     let email: string
     if (!args || !args.length) {
-      // TODO: get their default if it exists in config
       const defaultEmail = String(state.config.get("email"))
       const options = {
         prompt: boldText("Enter email: "),
@@ -40,16 +39,15 @@ export async function commandLogin(state: State, args?: string[]): Promise<strin
       [email] = args
     }
     const password = await read({prompt: boldText("Enter password: "), silent: true, replace: "*"});
-    const rememberMe = await read({prompt: boldText("Remember Me (y/n): "), default: "y", silent: false});
+    const rememberMe = await read({prompt: boldText("Remember me (y/n): "), default: "y", silent: false});
 
     let response = await state.monkeytype.login(email, password)
 
     if (response) {
-      if (rememberMe.toLowerCase() !== "y") {
-        // @ts-ignore
-        delete response.refreshToken
-      }
-      state.config.setConfig(response)
+      const configToSave = rememberMe.toLowerCase() !== "y"
+        ? (({ refreshToken: _, ...rest }) => rest)(response)
+        : response;
+      state.config.setConfig(configToSave)
 
       // save user to db
       const userId = await state.query.getUserById(state, response.localId)

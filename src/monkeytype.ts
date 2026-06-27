@@ -319,20 +319,6 @@ export interface TagResponse {
   personalBests: PersonalBests
 }
 
-export interface PersonalBests {
-  time: Time
-  words: Words
-  quote: Quote
-  zen: Zen
-  custom: Custom
-}
-
-export interface Time {}
-
-export interface Words {
-  "25": W25[]
-}
-
 export interface W25 {
   acc: number
   consistency: number
@@ -346,11 +332,14 @@ export interface W25 {
   timestamp: number
 }
 
-export interface Quote {}
+export type PersonalBests = Record<string, Record<string, W25[]>>
 
-export interface Zen {}
-
-export interface Custom {}
+export function getFieldsFromConfig(config: PresetConfig | undefined, personalBests: PersonalBests | undefined): { pb: W25 | undefined; mode: string | undefined; mode2: string | undefined } {
+  const mode = config?.mode || (config?.words !== 0 ? "words" : config?.time !== 0 ? "time" : undefined);
+  const mode2 = String(config?.words || config?.time || "") || undefined;
+  const pb = (mode && mode2) ? personalBests?.[mode]?.[mode2]?.[0] : undefined;
+  return { pb, mode, mode2 };
+}
 
 export const monkeytype = {
   login,

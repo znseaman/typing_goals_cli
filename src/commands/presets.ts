@@ -1,5 +1,5 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
-import { emojiForPresetConfigOption, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
+import { emojiForPresetConfigOption, getFieldsFromConfig, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { read } from "read"
 import { logger } from "../ui/logger.js"
 
@@ -162,8 +162,6 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       for (let tag of tags.data) {
         let preset = presets?.data.find((preset) => preset?.config?.tags?.join('') === tag._id)
         let presetConfig = preset?.config
-        let mode = presetConfig?.mode
-        let mode2 = Number(presetConfig?.words || presetConfig?.time || "")
         let tagPersonalBests = tag?.personalBests
         let tagMatchingPreset = presets?.data.reduce((acc, curr) => {
           if (tag._id !== curr?.config?.tags?.join('')) {
@@ -173,14 +171,14 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
           return acc
         },[] as string[])
 
+        const { pb, mode, mode2 } = getFieldsFromConfig(presetConfig, tagPersonalBests);
+
         objects.push({
           name: tag.name,
           "associated preset": tagMatchingPreset.length > 0 ? `${tagMatchingPreset.join('')}`: "❌",
           "preset mode": mode ? `${mode} ${mode2}` : "❌",
-          // @ts-ignore
-          "🏆 pb": (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
-          // @ts-ignore
-          "pb date": (!mode || !mode2) ? "❌" : new Date(tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp).toLocaleString(),
+          "🏆 pb": pb?.wpm ?? "❌",
+          "pb date": pb ? new Date(pb.timestamp).toLocaleString() : "❌",
         })
       }
 

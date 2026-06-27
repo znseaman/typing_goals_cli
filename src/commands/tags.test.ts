@@ -5,7 +5,7 @@ import { read } from "read"
 import { logger } from "../ui/logger.js";
 
 const goals1 = [{tagId: "tagId1", presetId: "presetId1", measure: 2, name: "Goal 1", type: "count", timeframe: "daily", presetName: "Preset 1"}]
-const tags1 = [{_id: "tagId1", personalBests: `{ "words": { "25": [{ "wpm": 50, "timestamp": 1781636303784 }] } }`}]
+const tags1 = [{_id: "tagId1", personalBests: { "words": { "25": [{ "wpm": 50, "timestamp": 1781636303784 }] } }}]
 const presets1 = [{_id: "presetId1", config: { "mode": "words", "words": 25, "tags": ["tagId1"] }, name: "Preset 1", tagId: "tagId1"}]
 
 // globally mock the "read" module

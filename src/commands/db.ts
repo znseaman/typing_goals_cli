@@ -10,11 +10,12 @@ export async function commandDb(state: State, args?: string[]): Promise<string> 
 
   logger.log("\nExecute SQL commands against your local database:\n")
 
-  // @ts-ignore
-  const [...query] = args
+  if (!args || args.length === 0) {
+    return "Usage: db <sql query>";
+  }
 
   // not safe at all and used only for testing, bobby tables 😁
-  const result = await state.db.execute(sql.raw(`${query.join(' ')}`))
+  const result = await state.db.execute(sql.raw(args.join(' ')))
 
   return `SQL Query Result: ${JSON.stringify(result, null, 2)}`
 }

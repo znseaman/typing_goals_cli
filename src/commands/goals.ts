@@ -1,7 +1,7 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
-import { PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
+import { getFieldsFromConfig, PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
 import { PresetObject } from "../db/queries/presets.js";
 import { TagObject } from "../db/queries/tags.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
@@ -19,8 +19,8 @@ export type GoalsObject = Record<string, {
   failedAttempts: number,
   goalTotalTime: number,
   totalSeconds: number,
-  pb: number,
-  pbTimestamp: number,
+  pb: number | string,
+  pbTimestamp: number | string,
   presetConfig: PresetConfig
 }>
 
@@ -35,8 +35,7 @@ export const defaultGoalOptions = {
 
 export async function commandGoals(state: State, args?: string[]): Promise<string | void> {
   
-  // @ts-ignore
-  const [crudType, ...crudArgs] = args
+  const [crudType, ...crudArgs] = args ?? []
 
   switch (crudType) {
     case "create":
@@ -46,8 +45,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
     case "delete":
       return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
     default:
-      // @ts-ignore
-      const [isVerbose] = args
+      const [isVerbose] = args ?? []
       const verbose = isVerbose === "-v" ? true : false
 
       try {
@@ -92,8 +90,7 @@ export function createGoalsObject(goals: Array<GoalWithPresetAndTag>, tags: Arra
       // workaround for getting json data from database for now
       const presetConfig = JSON.parse(associatedPreset?.config || "") as PresetConfig
       const tagPersonalBests = JSON.parse(associatedTag?.personalBests || "") as PersonalBests
-      let mode: string = presetConfig?.mode || (presetConfig?.words !== 0 ? "words" : (presetConfig?.time !== 0 ? "time" : "unknown mode"))
-      let mode2: string = String(presetConfig?.words || presetConfig?.time || "")
+      const { pb } = getFieldsFromConfig(presetConfig, tagPersonalBests);
 
       goalsObj[associatedTag._id] = {
         count: 0,
@@ -104,10 +101,8 @@ export function createGoalsObject(goals: Array<GoalWithPresetAndTag>, tags: Arra
         goalTotalTests: goal?.measure,
         goalTotalTime: goal?.measure,
         name: associatedPreset.name,
-        // @ts-ignore
-        pb: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.wpm,
-        // @ts-ignore
-        pbTimestamp: (!mode || !mode2) ? "❌" : tagPersonalBests?.[mode]?.[mode2]?.[0]?.timestamp,
+        pb: pb?.wpm ?? "❌",
+        pbTimestamp: pb?.timestamp ?? "❌",
         failedAttempts: 0,
         totalSeconds: 0,
         presetConfig: presetConfig || {},
@@ -364,9 +359,8 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
     ...(((existingGoal as GoalWithPresetAndTag).type !== type || (existingGoal as GoalWithPresetAndTag).measure !== Number(measure)) && { type: type, measure: Number(measure) }),
     ...(name !== newName && {name: newName}),
     ...(oldPresetName !== presetName && {presetId: presetId})
-  } as {name?: string, type?: string, measure?: number, presetId?: string, timeframe?: string};
+  } as {name?: string, type?: "time" | "count", measure?: number, presetId?: string, timeframe?: string};
 
-  // @ts-ignore
   const goal = await state.query.editGoalById(state, (existingGoal as GoalWithPresetAndTag).id, String(state.config.get("localId")), toSet)
 
   return `Successfully edited the goal named "${goal.name}"`

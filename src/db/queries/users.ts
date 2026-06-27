@@ -13,7 +13,6 @@ export type UsersQueries = {
 }
 
 export async function createUser(state: State, id: string, email: string, displayName: string) {
-  // @ts-ignore
   const [result] = await state.db.insert(users).values({id, email, displayName}).returning()
   return result
 }
