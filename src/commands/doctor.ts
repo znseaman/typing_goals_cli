@@ -6,6 +6,8 @@ import { sql } from "drizzle-orm"
 import { QueryResult } from "pg"
 
 export async function commandDoctor(state: State, args?: string[]): Promise<string | void> {
+  logger.log(`\nTyping Goals CLI Doctor 🫀\n`)
+  
   let nodeVersionFromFile = "";
   const filePath = path.join(import.meta.dirname, '..', '..', '.nvmrc')
   try {

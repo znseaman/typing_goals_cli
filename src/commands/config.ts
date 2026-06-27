@@ -57,7 +57,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
 
         return `Successfully deleted field "${field}" from your config!`
       case "path":
-        logger.info(`This config is located at: ${state.config.path}`)
+        logger.info(`Your config file is located: ${state.config.path}`)
         return
       default:
         logger.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path`)
