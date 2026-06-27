@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { commandDb } from "./db.js";
 import { State } from "../state.test.js";
 import * as drizzle from "drizzle-orm"
+import { logger } from "../ui/logger.js";
 
 // globally mock the "sql" module
 vi.mock("drizzle-orm", async (importOriginal) => {
@@ -22,7 +23,7 @@ describe("commandDB", () => {
 
   beforeEach(() => {
     state = new State()
-    log = vi.spyOn(console, "log").mockImplementation(() => {});
+    log = vi.spyOn(logger, "log").mockImplementation(() => {});
     execute = vi.spyOn(state.db, "execute").mockImplementation(() => {});
     raw = vi.spyOn(drizzle.sql, "raw").mockImplementation(() => ({} as any));
   });
