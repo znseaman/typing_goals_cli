@@ -93,6 +93,8 @@ export const State = vi.fn(
       getTags: vi.fn(),
       getResults: vi.fn(),
       refreshToken: vi.fn(),
+      getProfile: vi.fn(),
+      getStreak: vi.fn(),
     };
     config = {
       get: vi.fn(),

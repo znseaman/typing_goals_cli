@@ -1,7 +1,10 @@
 import Conf from 'conf'
+import { logger } from './ui/logger.js'
+import { read } from 'read'
 
 export interface Config {
   dbURL?: string
+  maintainStreak?: boolean
   displayName?: string
   email?: string
   expiresIn?: string
@@ -56,6 +59,24 @@ export class CustomConf extends Conf {
     return {
       headers,
       method,
+    }
+  }
+
+  async promptMaintainStreak(): Promise<void> {
+    // Check whether maintain streak has been set
+    let maintainStreak = this.get("maintainStreak")
+    if (typeof maintainStreak != 'boolean') {
+      try {
+        let result = await read({prompt: "Maintain daily typing streak (y/n): ", default: "y", silent: false});
+        maintainStreak = result.toLowerCase() !== "y" ? false : true
+        this.set("maintainStreak", maintainStreak)
+        logger.success(`Successfully set the "maintainStreak" field in your config to ${maintainStreak}!`)
+      } catch (error) {
+        if ((error as Error).message !== "canceled") {
+          logger.error(`An error occurred: ${(error as Error).message}. Please try again.`)
+          maintainStreak = false
+        }
+      }
     }
   }
 }

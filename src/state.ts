@@ -112,6 +112,8 @@ export async function initializeState(): Promise<State> {
 
   const commands: Commands = getCommands()
 
+  await config.promptMaintainStreak()
+
   const commandHistory: string[] = []
 
   const readline = initializeReadline(commandHistory)

@@ -11,6 +11,7 @@ import { commandDb } from "./commands/db.js"
 import { commandTags } from "./commands/tags.js"
 import { commandClear } from "./commands/clear.js"
 import { commandDoctor } from "./commands/doctor.js"
+import { commandProfile } from "./commands/profile.js"
 
 export type Commands = Record<string, CLICommand>
 
@@ -86,6 +87,11 @@ export function getCommands(): Commands {
       ],
       description: "Get presets from your MonkeyType account, delete your presets from the DB",
       execute: commandPresets,
+    },
+    "profile": {
+      name: "profile",
+      description: "Display your MonkeyType profile information",
+      execute: commandProfile,
     },
     "results": {
       name: "results",

@@ -1,3 +1,4 @@
+import { printStreak } from "./commands/profile.js";
 import { initializeReadlineHandlers, showPrompt, type State } from "./state.js";
 import { logger } from "./ui/logger.js";
 
@@ -9,6 +10,9 @@ export async function startREPL(state: State) {
 
   if (hasValidToken) {
     logger.log(`\nWelcome back, ${displayName}! 👋\n`);
+    const requestOptions = state.config.createRequestOptions("GET")
+    const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
+    printStreak(streakResponse)
   } else if (displayName) {
     // Try to refresh their token
     const token = String(state.config.get("refreshToken") || "")
@@ -24,6 +28,9 @@ export async function startREPL(state: State) {
           "refreshToken": response.refresh_token,
         })
         logger.log(`\nWelcome back, ${displayName}! 👋\n`)
+        const requestOptions = state.config.createRequestOptions("GET")
+        const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
+        printStreak(streakResponse)
       } catch {
         wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
       }
@@ -43,7 +50,7 @@ export async function startREPL(state: State) {
 }
 
 async function promptBeforeInitialization(handler: () => Promise<string | void>): Promise<boolean> {
-  let output;
+  let output; 
   try {
     output = await handler()
     if (output) {

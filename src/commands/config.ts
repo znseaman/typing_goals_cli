@@ -23,8 +23,8 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
     switch (command) {
       case "get":
         const result = state.config.get(field)
-        if (!result) {
-          logger.error(`The "${field}" field does not exist in the config`)
+        if (!result && typeof result !== "boolean") {
+          logger.error(`The "${field}" field does not exist in the config.`)
           return
         }
         logger.log(`${JSON.stringify(result, null, 2)}`)
@@ -34,7 +34,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
         try {
           state.config.set(field, parsedValue)
         } catch (error) {
-          logger.error(`Unable to set value to field "${field}": ${error}`)
+          logger.error(`Unable to set the value to the "${field}" field: ${error}`)
           return
         }
 
@@ -42,12 +42,12 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
           state.db = await initializeDB(state.config)
         }
 
-        return `Successfully set "${field}" in your config!`
+        return `Successfully set the "${field}" field in your config!`
       case "delete":
         try {
           state.config.delete(field)
         } catch (error) {
-          logger.error(`Unable to delete field "${field}": ${error}`)
+          logger.error(`Unable to delete the "${field}" field: ${error}`)
           return
         }
 
@@ -55,12 +55,12 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
           state.db = await initializeDB(state.config)
         }
 
-        return `Successfully deleted field "${field}" from your config!`
+        return `Successfully deleted the "${field}" field from your config!`
       case "path":
         logger.info(`Your config file is located: ${state.config.path}`)
         return
       default:
-        logger.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path`)
+        logger.error(`Unknown subcommand: ${command}. Supported subcommands: get, set, delete, path.`)
         return
     }
   }
@@ -83,7 +83,7 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
   logger.info(`User Config: ${JSON.stringify(json, null, 2)}`)
 }
 
-function parseStringValue(value: string) {
+export function parseStringValue(value: string) {
   const trimmed = value.trim();
 
   // boolean and null strings

@@ -35,14 +35,15 @@ describe("startREPL", () => {
     const promptSpy = vi.spyOn(state.readline, "prompt");
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    getConfig.mockReturnValueOnce("Bob")
-    getConfig.mockReturnValueOnce("xxxxxxxxxx")
+    getConfig.mockReturnValueOnce("Bob")          // displayName
+    getConfig.mockReturnValueOnce("xxxxxxxxxx")   // refreshToken
+    getConfig.mockReturnValueOnce(false)          // maintainStreak
 
     // @ts-ignore
     await startREPL(state);
-    
+
     expect(isTokenValid).toHaveBeenCalledTimes(1);
-    expect(getConfig).toHaveBeenCalledTimes(2);
+    expect(getConfig).toHaveBeenCalledTimes(3);
     expect(setConfig).toHaveBeenCalledTimes(1);
     expect(promptSpy).toHaveBeenCalledTimes(1);
 

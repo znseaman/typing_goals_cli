@@ -18,6 +18,8 @@ export type MonkeyType = {
   getTags: (requestOptions: RequestOptions) => Promise<TagsResponse>,
   getResults: (offset: number, limit: number, requestOptions: RequestOptions, lastResultTimestamp: number) => Promise<ResultsResponse>,
   refreshToken: (refreshToken: string) => Promise<RefreshTokenResponse>,
+  getProfile: (uid: string, requestOptions: RequestOptions) => Promise<ProfileResponse>,
+  getStreak: (requestOptions: RequestOptions) => Promise<StreakResponse>,
 }
 
 export const headers = new Headers()
@@ -308,6 +310,126 @@ export async function getResults(offset = 0, limit = 1000, requestOptions: Reque
   }
 }
 
+export interface ProfileResponse {
+  message: string
+  data: Profile
+}
+
+export interface Profile {
+  name: string
+  addedAt: number
+  typingStats: TypingStats
+  personalBests: ProfilePersonalBests
+  discordId: string
+  discordAvatar: string
+  xp: number
+  streak: number
+  maxStreak: number
+  isPremium: boolean
+  details: ProfileDetails
+  allTimeLbs: AllTimeLbs
+  uid: string
+}
+
+export interface TypingStats {
+  completedTests: number
+  startedTests: number
+  timeTyping: number
+}
+
+export interface ProfilePersonalBests {
+  time: Time
+  words: Words
+}
+
+export interface Time {
+  "15": TestResult[]
+  "30": TestResult[]
+  "60": TestResult[]
+  "120": TestResult[]
+}
+
+export interface Words {
+  "10": TestResult[]
+  "25": TestResult[]
+  "50": TestResult[]
+  "100": TestResult[]
+}
+
+export interface TestResult {
+  acc: number
+  consistency: number
+  difficulty: string
+  lazyMode: boolean
+  language: string
+  punctuation: boolean
+  raw: number
+  wpm: number
+  timestamp: number
+  numbers?: boolean
+}
+
+export interface ProfileDetails {
+  bio: string
+  keyboard: string
+  socialProfiles: SocialProfiles
+  showActivityOnPublicProfile: boolean
+}
+
+export interface SocialProfiles {
+  github: string
+  twitter: string
+  website: string
+}
+
+export interface AllTimeLbs {
+  time: Record<string, Record<string, { rank: number; count: number }>>
+}
+
+export async function getProfile(uid: string, requestOptions: RequestOptions): Promise<ProfileResponse> {
+  const params = new URLSearchParams({
+    isUid: String(true),
+  })
+
+  const response = await fetch(
+    `${MONKEYTYPE_API_BASE_URL}/users/${uid}/profile?${params.toString()}`,
+    requestOptions,
+  )
+
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
+export interface StreakResponse {
+  message: string
+  data?: {
+    lastResultTimestamp: number,
+    length: number
+    maxLength: number
+    hourOffset: number | null
+  }
+}
+
+export async function getStreak(requestOptions: RequestOptions): Promise<StreakResponse> {
+  const response = await fetch(
+    `${MONKEYTYPE_API_BASE_URL}/users/streak`,
+    requestOptions,
+  )
+
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
 export interface TagsResponse {
   data: TagResponse[]
   message: string
@@ -334,7 +456,7 @@ export interface W25 {
 
 export type PersonalBests = Record<string, Record<string, W25[]>>
 
-export function getFieldsFromConfig(config: PresetConfig | undefined, personalBests: PersonalBests | undefined): { pb: W25 | undefined; mode: string | undefined; mode2: string | undefined } {
+export function getFieldsFromConfig(config: PresetConfig | undefined, personalBests: Record<string, Record<string, W25[]>> | undefined): { pb: W25 | undefined; mode: string | undefined; mode2: string | undefined } {
   const mode = config?.mode || (config?.words !== 0 ? "words" : config?.time !== 0 ? "time" : undefined);
   const mode2 = String(config?.words || config?.time || "") || undefined;
   const pb = (mode && mode2) ? personalBests?.[mode]?.[mode2]?.[0] : undefined;
@@ -347,4 +469,6 @@ export const monkeytype = {
   getTags,
   getResults,
   refreshToken,
+  getProfile,
+  getStreak,
 } satisfies MonkeyType
