@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { State } from "./state.test.js";
-import { runDailySummary, runBackfill } from "./goalsSummarizer.js";
+import { runDailySummary, runBackfill, runForceBackfill } from "./goalsSummarizer.js";
 
 const countGoal = {
   id: "g1", tagId: "tag1", presetId: "p1", presetName: "Preset 1",
@@ -13,7 +13,7 @@ const timeGoal = {
 };
 
 const makeResult = (id: string, tagId: string, wpm: number, testDuration: number, extra?: object) => ({
-  _id: id, tags: [tagId], wpm, testDuration, timestamp: 1782000000000,
+  _id: id, tags: [tagId], wpm, testDuration, timestamp: 1782000000000, restartCount: 0,
   ...extra,
 });
 
@@ -76,6 +76,7 @@ describe("runDailySummary", () => {
       date: "2026-06-28",
       met: true,
       totalMeasure: 2,
+      failedTests: 0,
       resultIds: ["r1", "r2"],
       minWpm: 80,
       avgWpm: 90,
@@ -118,6 +119,21 @@ describe("runDailySummary", () => {
       avgWpm: null,
       maxWpm: null,
     }));
+  });
+
+  it("sums restartCount from matching results into failedTests", async () => {
+    const r1 = makeResult("r1", "tag1", 80, 30, { restartCount: 3 });
+    const r2 = makeResult("r2", "tag1", 90, 25, { restartCount: 1 });
+
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([countGoal]);
+    vi.spyOn(state.query, "getResultsByUserIdBetweenTimestamps").mockResolvedValue([r1, r2] as any);
+    vi.spyOn(state.query, "getGoalsHistoryByGoalIdAndDate").mockResolvedValue(undefined);
+    const createSpy = vi.spyOn(state.query, "createGoalsHistoryEntry").mockResolvedValue({} as any);
+
+    // @ts-ignore
+    await runDailySummary(state, "2026-06-28");
+
+    expect(createSpy).toHaveBeenCalledWith(state, expect.objectContaining({ failedTests: 4 }));
   });
 
   it("creates met=true entry for time goal using testDuration and incompleteTestSeconds", async () => {
@@ -304,5 +320,52 @@ describe("runBackfill", () => {
     // twoDaysAgo skipped (existing), only yesterday created
     expect(createSpy).toHaveBeenCalledTimes(1);
     expect(createSpy).toHaveBeenCalledWith(state, expect.objectContaining({ date: yesterdayStr }));
+  });
+});
+
+describe("runForceBackfill", () => {
+  let state: InstanceType<typeof State>;
+
+  beforeEach(() => {
+    state = new State();
+    vi.spyOn(state.config, "get").mockReturnValue("user1");
+  });
+
+  it("returns early when userId is 'undefined'", async () => {
+    vi.spyOn(state.config, "get").mockReturnValue("undefined");
+    const deleteSpy = vi.spyOn(state.query, "deleteGoalsHistoryByUserId");
+
+    // @ts-ignore
+    await runForceBackfill(state);
+
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("deletes all history then re-runs backfill", async () => {
+    const deleteSpy = vi.spyOn(state.query, "deleteGoalsHistoryByUserId").mockResolvedValue(undefined);
+    // backfill exits early after delete — no goals
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([]);
+
+    // @ts-ignore
+    await runForceBackfill(state);
+
+    expect(deleteSpy).toHaveBeenCalledWith(state);
+    expect(state.query.getGoalsByUserId).toHaveBeenCalled();
+  });
+
+  it("calls deleteGoalsHistoryByUserId before running backfill", async () => {
+    const callOrder: string[] = [];
+    vi.spyOn(state.query, "deleteGoalsHistoryByUserId").mockImplementation(async () => {
+      callOrder.push("delete");
+    });
+    vi.spyOn(state.query, "getGoalsByUserId").mockImplementation(async () => {
+      callOrder.push("backfill");
+      return [];
+    });
+
+    // @ts-ignore
+    await runForceBackfill(state);
+
+    expect(callOrder).toEqual(["delete", "backfill"]);
   });
 });

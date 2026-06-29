@@ -71,6 +71,13 @@
       "when": 1782755236150,
       "tag": "0009_curly_felicia_hardy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782769747020,
+      "tag": "0010_glorious_talkback",
+      "breakpoints": true
     }
   ]
 }

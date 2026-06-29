@@ -1,6 +1,7 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { read } from "read";
 import { getAllResults } from "./results.js";
+import { runForceBackfill } from "../goalsSummarizer.js";
 import { getFieldsFromConfig, PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
 import { PresetObject } from "../db/queries/presets.js";
 import { TagObject } from "../db/queries/tags.js";
@@ -48,6 +49,10 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
     case "history":
       // allow for goals with spaces
       return await showGoalHistory(state, crudArgs.join(" "))
+    case "backfill":
+      logger.info("Re-running goals history backfill. This may take a moment...")
+      await runForceBackfill(state)
+      return "Goals history backfill complete."
     default:
       const [isVerbose] = args ?? []
       const verbose = isVerbose === "-v" ? true : false
@@ -453,6 +458,7 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
         target: goal.type === "count"
           ? String(h.measure)
           : convertMillisecondsToSimplifiedTime(h.measure),
+        "❌ failed": h.failedTests,
         "min wpm": h.minWpm != null ? h.minWpm.toFixed(0) : "—",
         "avg wpm": h.avgWpm != null ? h.avgWpm.toFixed(0) : "—",
         "max wpm": h.maxWpm != null ? h.maxWpm.toFixed(0) : "—",

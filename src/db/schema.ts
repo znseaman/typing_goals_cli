@@ -88,6 +88,7 @@ export const goalsHistory = pgTable('goals_history', {
   measure: integer('measure').notNull(),
   timeframe: text('timeframe').notNull(),
   totalMeasure: integer('total_measure').notNull(),
+  failedTests: integer('failed_tests').notNull().default(0),
   resultIds: json('result_ids').notNull(),
   minWpm: real('min_wpm'),
   maxWpm: real('max_wpm'),

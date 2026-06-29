@@ -1,0 +1,1 @@
+ALTER TABLE "goals_history" ADD COLUMN "failed_tests" integer DEFAULT 0 NOT NULL;

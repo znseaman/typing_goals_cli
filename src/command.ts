@@ -52,7 +52,7 @@ export function getCommands(): Commands {
     },
     "goals": {
       name: "goals",
-      usage: "goals [-v|create|edit|delete|history] [<name>] [<type>] [<measure>] [<presetName>]",
+      usage: "goals [-v|create|edit|delete|history|backfill] [<name>] [<type>] [<measure>] [<presetName>]",
       examples: [
         "goals",
         "goals -v #verbose",
@@ -62,6 +62,7 @@ export function getCommands(): Commands {
         "goals delete",
         "goals history",
         "goals history Normal",
+        "goals backfill",
       ],
       description: "List all user-created goals or create / edit / delete a goal",
       execute: commandGoals,

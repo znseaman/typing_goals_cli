@@ -1,4 +1,4 @@
-import { describe, test, vi, expect } from "vitest";
+import { describe, test, vi, expect, beforeEach } from "vitest";
 import { commandGoals, createCompleter, createGoalsObject, GoalsObject, printGoalsTable, validateMeasure, validateType } from "./goals.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { State } from "../state.test.js";
@@ -6,6 +6,11 @@ import { logger } from "../ui/logger.js";
 import { TagObject } from "../db/queries/tags.js";
 import { PresetObject } from "../db/queries/presets.js";
 import { read } from "read";
+import { runForceBackfill } from "../goalsSummarizer.js";
+
+vi.mock("../goalsSummarizer.js", () => ({
+  runForceBackfill: vi.fn(),
+}));
 
 const goals1 = [{tagId: "tagId1", presetId: "presetId1", measure: 2, name: "Goal 1", type: "count", timeframe: "daily", presetName: "Preset 1"}]
 const tags1 = [{_id: "tagId1", personalBests: `{ "words": { "25": [{ "wpm": 50, "timestamp": 1781636303784 }] } }`}]
@@ -688,7 +693,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     id: "h1", goalId: "g1", userId: "u1",
     date: "2026-06-28", met: true,
     name: "Goal 1", type: "count" as const, measure: 2, timeframe: "daily",
-    totalMeasure: 3, resultIds: ["r1"],
+    totalMeasure: 3, failedTests: 2, resultIds: ["r1"],
     minWpm: 80.5, avgWpm: 90.0, maxWpm: 100.0,
     createdAt: new Date(), updatedAt: new Date(),
   }
@@ -735,7 +740,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([historyGoal])
-    vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([{ ...mockHistoryEntry, met: false, totalMeasure: 0, minWpm: null, avgWpm: null, maxWpm: null }])
+    vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([{ ...mockHistoryEntry, met: false, totalMeasure: 0, failedTests: 0, minWpm: null, avgWpm: null, maxWpm: null }])
     vi.spyOn(state.query, "computeStreak").mockResolvedValue(0)
 
     //@ts-ignore
@@ -745,8 +750,8 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("0d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "min wpm": "—", "avg wpm": "—", "max wpm": "—" }],
-      ["date", "met", "total", "target", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "❌ failed": 0, "min wpm": "—", "avg wpm": "—", "max wpm": "—" }],
+      ["date", "met", "total", "target", "❌ failed", "min wpm", "avg wpm", "max wpm"]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()
@@ -767,8 +772,8 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("5d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "min wpm": "81", "avg wpm": "90", "max wpm": "100" }],
-      ["date", "met", "total", "target", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "❌ failed": 2, "min wpm": "81", "avg wpm": "90", "max wpm": "100" }],
+      ["date", "met", "total", "target", "❌ failed", "min wpm", "avg wpm", "max wpm"]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()
@@ -804,4 +809,33 @@ describe("showGoalHistory (via commandGoals history)", () => {
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("1/1 days met"))
   })
+});
+
+describe("commandGoals backfill", () => {
+  let state: InstanceType<typeof State>;
+
+  beforeEach(() => {
+    state = new State();
+    vi.mocked(runForceBackfill).mockReset().mockResolvedValue(undefined);
+  });
+
+  test("logs info message and returns success message", async () => {
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["backfill"]);
+
+    expect(infoSpy).toHaveBeenCalledWith("Re-running goals history backfill. This may take a moment...");
+    expect(result).toBe("Goals history backfill complete.");
+    infoSpy.mockRestore();
+  });
+
+  test("calls runForceBackfill with state", async () => {
+    vi.spyOn(logger, "info").mockImplementation(() => {});
+
+    // @ts-ignore
+    await commandGoals(state, ["backfill"]);
+
+    expect(runForceBackfill).toHaveBeenCalledWith(state);
+  });
 });

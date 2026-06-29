@@ -40,6 +40,7 @@ function summarizeDayForGoal(
   const minWpm = wpms.length > 0 ? Math.min(...wpms) : null
   const maxWpm = wpms.length > 0 ? Math.max(...wpms) : null
   const avgWpm = wpms.length > 0 ? wpms.reduce((a, b) => a + b, 0) / wpms.length : null
+  const failedTests = matchingResults.reduce((sum, r) => sum + (r.restartCount || 0), 0)
 
   return {
     goalId: goal.id,
@@ -51,11 +52,19 @@ function summarizeDayForGoal(
     measure: goal.measure,
     timeframe: goal.timeframe,
     totalMeasure,
+    failedTests,
     resultIds: matchingResults.map(r => r._id),
     minWpm,
     maxWpm,
     avgWpm,
   }
+}
+
+export async function runForceBackfill(state: State): Promise<void> {
+  const userId = String(state.config.get("localId"))
+  if (!userId || userId === "undefined") return
+  await state.query.deleteGoalsHistoryByUserId(state)
+  await runBackfill(state)
 }
 
 export async function runDailySummary(state: State, dateStr: string): Promise<void> {

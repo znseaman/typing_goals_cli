@@ -46,6 +46,7 @@ describe("Database Queries", () => {
     measure: 2,
     timeframe: "daily",
     totalMeasure: 3,
+    failedTests: 1,
     resultIds: ["r1", "r2"],
     minWpm: 80,
     maxWpm: 100,

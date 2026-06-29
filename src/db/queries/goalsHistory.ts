@@ -14,6 +14,7 @@ export type GoalsHistoryInsert = {
   measure: number
   timeframe: string
   totalMeasure: number
+  failedTests: number
   resultIds: string[]
   minWpm: number | null
   maxWpm: number | null
@@ -26,6 +27,7 @@ export type GoalsHistoryQueries = {
   getGoalsHistoryByGoalIdAndDate: (state: State, goalId: string, date: string) => Promise<GoalsHistory | undefined>
   getLatestGoalsHistoryDateForUser: (state: State) => Promise<string | undefined>
   computeStreak: (state: State, goalId: string) => Promise<number>
+  deleteGoalsHistoryByUserId: (state: State) => Promise<void>
 }
 
 export async function createGoalsHistoryEntry(state: State, entry: GoalsHistoryInsert): Promise<GoalsHistory> {
@@ -85,10 +87,16 @@ export async function computeStreak(state: State, goalId: string): Promise<numbe
   return streak
 }
 
+export async function deleteGoalsHistoryByUserId(state: State): Promise<void> {
+  const userId = String(state.config.get("localId"))
+  await state.db.delete(goalsHistory).where(eq(goalsHistory.userId, userId))
+}
+
 export default {
   createGoalsHistoryEntry,
   getGoalsHistoryByGoalId,
   getGoalsHistoryByGoalIdAndDate,
   getLatestGoalsHistoryDateForUser,
   computeStreak,
+  deleteGoalsHistoryByUserId,
 } as GoalsHistoryQueries

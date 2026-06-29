@@ -138,6 +138,7 @@ export const State = vi.fn(
       getLatestGoalsHistoryDateForUser: vi.fn(),
       getResultsByUserIdBetweenTimestamps: vi.fn(),
       getEarliestResultTimestampForUser: vi.fn(),
+      deleteGoalsHistoryByUserId: vi.fn(),
     };
     suggestionState = {
       suggestions: [],
