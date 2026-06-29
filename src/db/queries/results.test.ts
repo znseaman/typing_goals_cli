@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { results, users } from "../schema.js";
-import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp } from "./results.js";
+import { createResult, getResultById, getResultsByUserIdAndAfterTimestamp, getResultsByUserIdBetweenTimestamps, getEarliestResultTimestampForUser } from "./results.js";
 
 describe("Database Queries", () => {
   let db: ReturnType<typeof drizzle>;
@@ -78,5 +78,58 @@ describe("Database Queries", () => {
     // Assert
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBe(0);
+  });
+
+  const ts1 = 1782000000000;
+  const ts2 = ts1 + 3600000;
+  const ts3 = ts1 + 7200000;
+
+  it("should return results within timestamp range (inclusive start, exclusive end)", async () => {
+    // @ts-ignore
+    await createResult(state, "a", {_id: "a", timestamp: ts1})
+    // @ts-ignore
+    await createResult(state, "b", {_id: "b", timestamp: ts2})
+    // @ts-ignore
+    await createResult(state, "c", {_id: "c", timestamp: ts3})
+
+    // @ts-ignore
+    const result = await getResultsByUserIdBetweenTimestamps(state, ts1, ts3)
+
+    expect(result.length).toBe(2);
+    expect(result[0]._id).toBe("a");
+    expect(result[1]._id).toBe("b");
+  });
+
+  it("should return empty array when no results fall within range", async () => {
+    // @ts-ignore
+    await createResult(state, "a", {_id: "a", timestamp: ts1})
+
+    // @ts-ignore
+    const result = await getResultsByUserIdBetweenTimestamps(state, ts2, ts3)
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.length).toBe(0);
+  });
+
+  it("should return the earliest result timestamp for the user", async () => {
+    // Insert out of order
+    // @ts-ignore
+    await createResult(state, "c", {_id: "c", timestamp: ts3})
+    // @ts-ignore
+    await createResult(state, "a", {_id: "a", timestamp: ts1})
+    // @ts-ignore
+    await createResult(state, "b", {_id: "b", timestamp: ts2})
+
+    // @ts-ignore
+    const earliest = await getEarliestResultTimestampForUser(state)
+
+    expect(earliest).toBe(ts1);
+  });
+
+  it("should return undefined when no results exist", async () => {
+    // @ts-ignore
+    const earliest = await getEarliestResultTimestampForUser(state)
+
+    expect(earliest).toBeUndefined();
   });
 });

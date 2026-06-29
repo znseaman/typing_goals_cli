@@ -43,7 +43,7 @@ describe("startREPL", () => {
     await startREPL(state);
 
     expect(isTokenValid).toHaveBeenCalledTimes(1);
-    expect(getConfig).toHaveBeenCalledTimes(3);
+    expect(getConfig).toHaveBeenCalledTimes(4);
     expect(setConfig).toHaveBeenCalledTimes(1);
     expect(promptSpy).toHaveBeenCalledTimes(1);
 

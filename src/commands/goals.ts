@@ -7,6 +7,7 @@ import { TagObject } from "../db/queries/tags.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
 import { boldText, logger } from "../ui/logger.js";
+import { stdout } from "node:process";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -44,6 +45,9 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
       return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => editGoal(state, crudArgs as string[]))
     case "delete":
       return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
+    case "history":
+      // allow for goals with spaces
+      return await showGoalHistory(state, crudArgs.join(" "))
     default:
       const [isVerbose] = args ?? []
       const verbose = isVerbose === "-v" ? true : false
@@ -73,7 +77,12 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
 
         const goalsObj = createGoalsObject(goals, tags, presets, (allResults as ResultResponse[]))
 
-        printGoalsTable(goals, goalsObj, verbose)
+        const streaks: Record<string, number> = {}
+        for (const goal of goals) {
+          streaks[goal.id] = await state.query.computeStreak(state, goal.id)
+        }
+
+        printGoalsTable(goals, goalsObj, streaks, verbose)
       } catch (error) {
         logger.error(`An error occurred executing "goals" command: ${(error as Error)?.message}. Please try again.`);
       }
@@ -367,10 +376,12 @@ async function editGoal(state: State, args?: string[]): Promise<string | void> {
 }
 
 async function deleteGoal(state: State, args?: string[]): Promise<string | void> {
-  let [name] = args || [""]
+  let [...crudArgs] = args || [""]
 
   const goals = await state.query.getGoalsByUserId(state)
 
+  // allow for goals with spaces
+  let name = crudArgs.join(" ")
   let validatedName = false
   while (!name || !validatedName) {
     if (!name) name = await read({prompt: boldText("Enter goal name to delete: "), completer: createCompleter(goals.map((goal) => goal.name))});
@@ -389,14 +400,73 @@ async function deleteGoal(state: State, args?: string[]): Promise<string | void>
     validatedName = true
   }
 
+  // Ask to confirm whether they would like to delete the goal
+  let confirm = await read({prompt: boldText(`Confirm to delete the "${name}" goal (y/n): `), default: "n"});
+  if (confirm.toLowerCase() !== "y") {
+    stdout.write("\x1b[1A\r\x1b[2K")
+    return
+  }
+
   let goal = await state.query.deleteGoalByName(state, name, String(state.config.get("localId")))
 
   return `Successfully deleted the goal named "${goal.name}"`
 }
 
+async function showGoalHistory(state: State, goalName?: string): Promise<void> {
+  const goals = await state.query.getGoalsByUserId(state)
+
+  if (!goals?.length) {
+    logger.error(`No goals created yet. Type "goals create" to create a goal.`)
+    return
+  }
+
+  const targetGoals = goalName
+    ? goals.filter(g => g.name.toLowerCase() === goalName.toLowerCase())
+    : goals
+
+  if (goalName && !targetGoals.length) {
+    logger.error(`No goal found named "${goalName}".`)
+    return
+  }
+
+  for (const goal of targetGoals) {
+    const history = await state.query.getGoalsHistoryByGoalId(state, goal.id)
+
+    if (!history.length) {
+      logger.info(`No history recorded yet for goal "${goal.name}".`)
+      continue
+    }
+
+    const streak = await state.query.computeStreak(state, goal.id)
+    const daysMet = history.filter(h => h.met).length
+    logger.log(`\nGoal: ${goal.name} — ${daysMet}/${history.length} days met | ${streak === 0 ? `🧊`: `🔥`} ${streak}d streak`)
+
+    const rows = history.map(h => {
+      const totalDisplay = goal.type === "count"
+        ? String(h.totalMeasure)
+        : convertMillisecondsToSimplifiedTime(h.totalMeasure) || "0 minutes"
+
+      return {
+        date: h.date,
+        met: h.met ? "✅" : "❌",
+        total: totalDisplay,
+        target: goal.type === "count"
+          ? String(h.measure)
+          : convertMillisecondsToSimplifiedTime(h.measure),
+        "min wpm": h.minWpm != null ? h.minWpm.toFixed(0) : "—",
+        "avg wpm": h.avgWpm != null ? h.avgWpm.toFixed(0) : "—",
+        "max wpm": h.maxWpm != null ? h.maxWpm.toFixed(0) : "—",
+      }
+    })
+
+    console.table(rows, Object.keys(rows[0]))
+  }
+}
+
 export function printGoalsTable(
   goals: Array<GoalWithPresetAndTag>,
   goalsObj: GoalsObject,
+  streaks: Record<string, number>,
   verbose?: boolean
 ) {
   const startOfTodayUTC = getStartOfTodayUTC()
@@ -429,6 +499,7 @@ export function printGoalsTable(
         "associated preset": goalObject?.name,
       }
     }
+    const streak = streaks[goal.id] ?? 0
     objects.push({
       ...{
         status: status ? `✅` : `❌`,
@@ -436,6 +507,7 @@ export function printGoalsTable(
         type: goal.type,
         "target": goal.type == "time" ? convertMillisecondsToSimplifiedTime(goal.measure) : goal.measure,
         "to go": toGo,
+        "streak": streak > 0 ? `🔥 ${streak}d` : `🧊 ${streak}d`,
       },
       ...object
     })

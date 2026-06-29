@@ -1,4 +1,6 @@
+import cron from "node-cron";
 import { printStreak } from "./commands/profile.js";
+import { runBackfill, runDailySummary } from "./goalsSummarizer.js";
 import { initializeReadlineHandlers, showPrompt, type State } from "./state.js";
 import { logger } from "./ui/logger.js";
 
@@ -13,6 +15,8 @@ export async function startREPL(state: State) {
     const requestOptions = state.config.createRequestOptions("GET")
     const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
     printStreak(streakResponse)
+    runBackfill(state).catch(() => {})
+    scheduleDailySummary(state)
   } else if (displayName) {
     // Try to refresh their token
     const token = String(state.config.get("refreshToken") || "")
@@ -31,6 +35,8 @@ export async function startREPL(state: State) {
         const requestOptions = state.config.createRequestOptions("GET")
         const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
         printStreak(streakResponse)
+        runBackfill(state).catch(() => {})
+        scheduleDailySummary(state)
       } catch {
         wasPromptedBeforeInitialization = await promptBeforeInitialization(loginHandler)
       }
@@ -47,6 +53,13 @@ export async function startREPL(state: State) {
   if (!wasPromptedBeforeInitialization) {
     initializeReadlineHandlers(state);
   }
+}
+
+function scheduleDailySummary(state: State): void {
+  cron.schedule("0 0 * * *", async () => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+    await runDailySummary(state, yesterday)
+  }, { timezone: "UTC" })
 }
 
 async function promptBeforeInitialization(handler: () => Promise<string | void>): Promise<boolean> {

@@ -131,7 +131,21 @@ export const State = vi.fn(
       deleteUsers: vi.fn(),
       getUserById: vi.fn(),
       getUsers: vi.fn(),
+      computeStreak: vi.fn(),
+      createGoalsHistoryEntry: vi.fn(),
+      getGoalsHistoryByGoalId: vi.fn(),
+      getGoalsHistoryByGoalIdAndDate: vi.fn(),
+      getLatestGoalsHistoryDateForUser: vi.fn(),
+      getResultsByUserIdBetweenTimestamps: vi.fn(),
+      getEarliestResultTimestampForUser: vi.fn(),
     };
+    suggestionState = {
+      suggestions: [],
+      selectedIndex: -1,
+      numRenderedLines: 0,
+      ghostTextVisible: false,
+    };
+    currentKeypressHandler = vi.fn();
   },
 );
 

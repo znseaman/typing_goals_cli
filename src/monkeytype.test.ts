@@ -1,5 +1,5 @@
 import { describe, test, vi, expect } from "vitest";
-import { getBody, getPresets, getResults, getTags, login, refreshToken } from "./monkeytype.js";
+import { getBody, getPresets, getProfile, getResults, getStreak, getTags, login, refreshToken } from "./monkeytype.js";
 
 describe("getBody", () => {
   test.each([
@@ -202,6 +202,90 @@ describe("getResults", () => {
         `https://api.monkeytype.com/results?limit=${limit}&offset=${offset}&onOrAfterTimestamp=${lastResultTimeStamp + 1}`,
         expect.anything()
       )
+    }
+  })
+})
+
+describe("getProfile", () => {
+  test.each([
+    { uid: "userId1", status: 200, statusText: "OK", expected: { data: { name: "Bob", streak: 5, maxStreak: 10 }, message: "Profile" } },
+    { uid: "userId1", status: 403, statusText: "Restricted", expected: `403 - Restricted: Try running the "login" command before running this again.` },
+  ])
+  ('getProfile($uid) -> $expected', async ({ uid, status, statusText, expected }) => {
+
+    // @ts-ignore
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        status,
+        statusText,
+        json: () => Promise.resolve(expected),
+      }),
+    );
+
+    const requestOptions = {
+      headers: new Headers({ Authorization: "Bearer xxxxxxxxx" }),
+      method: "GET",
+    };
+
+    const expectedUrl = `https://api.monkeytype.com/users/${uid}/profile?isUid=true`;
+
+    if (status >= 400) {
+      try {
+        await getProfile(uid, requestOptions)
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(expected)
+      }
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenNthCalledWith(1, expectedUrl, expect.anything())
+    } else {
+      const data = await getProfile(uid, requestOptions);
+      expect(data).toEqual(expected);
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenNthCalledWith(1, expectedUrl, expect.anything())
+    }
+  })
+})
+
+describe("getStreak", () => {
+  test.each([
+    { status: 200, statusText: "OK", expected: { data: { lastResultTimestamp: 1781990752581, length: 5, maxLength: 10, hourOffset: null }, message: "Streak" } },
+    { status: 403, statusText: "Restricted", expected: `403 - Restricted: Try running the "login" command before running this again.` },
+  ])
+  ('getStreak() -> $expected', async ({ status, statusText, expected }) => {
+
+    // @ts-ignore
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        status,
+        statusText,
+        json: () => Promise.resolve(expected),
+      }),
+    );
+
+    const requestOptions = {
+      headers: new Headers({ Authorization: "Bearer xxxxxxxxx" }),
+      method: "GET",
+    };
+
+    if (status >= 400) {
+      try {
+        await getStreak(requestOptions)
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(expected)
+      }
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenNthCalledWith(1, "https://api.monkeytype.com/users/streak", expect.anything())
+    } else {
+      const data = await getStreak(requestOptions);
+      expect(data).toEqual(expected);
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenNthCalledWith(1, "https://api.monkeytype.com/users/streak", expect.anything())
     }
   })
 })

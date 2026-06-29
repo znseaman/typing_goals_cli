@@ -13,6 +13,7 @@ import tags, { TagsQueries } from "./db/queries/tags.js";
 import results, { ResultsQueries } from "./db/queries/results.js";
 import presets, { PresetsQueries } from "./db/queries/presets.js";
 import users, { UsersQueries } from "./db/queries/users.js";
+import goalsHistory, { GoalsHistoryQueries } from "./db/queries/goalsHistory.js";
 
 export type CLICommand = {
   name: string;
@@ -41,7 +42,7 @@ export type State = {
   stopFullExit: boolean,
   commandHistory: string[],
   removeReadline_runNonReadline_addReadline: (state: State, commandName: string, handler: () => Promise<void>) => void,
-  query: GoalsQueries & TagsQueries & ResultsQueries & PresetsQueries & UsersQueries,
+  query: GoalsQueries & TagsQueries & ResultsQueries & PresetsQueries & UsersQueries & GoalsHistoryQueries,
   suggestionState: SuggestionState
   currentKeypressHandler: ((str: string, key: readlineModule.Key) => void) | null
 }
@@ -131,6 +132,7 @@ export async function initializeState(): Promise<State> {
     ...results,
     ...presets,
     ...users,
+    ...goalsHistory,
   }
 
   return {

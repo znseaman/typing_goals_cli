@@ -64,6 +64,13 @@
       "when": 1780962181080,
       "tag": "0008_hard_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782755236150,
+      "tag": "0009_curly_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }
