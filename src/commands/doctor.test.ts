@@ -80,7 +80,7 @@ describe("commandDoctor", () => {
     } else if (test_path === "success") {
       expect(successSpy).toHaveBeenNthCalledWith(1, `NodeJS ${NODE_VERSION}`)
       expect(successSpy).toHaveBeenNthCalledWith(2, `PostgreSQL ${POSTGRES_DB_VERSION}`)
-      expect(successSpy).toHaveBeenNthCalledWith(3, `MonkeyType account for ${displayName}`)
+      expect(successSpy).toHaveBeenNthCalledWith(3, `MonkeyType account connected`)
       expect(output).toMatch(/Success/)
     }
   });
