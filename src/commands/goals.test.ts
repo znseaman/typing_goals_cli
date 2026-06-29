@@ -694,7 +694,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     date: "2026-06-28", met: true,
     name: "Goal 1", type: "count" as const, measure: 2, timeframe: "daily",
     totalMeasure: 3, failedTests: 2, resultIds: ["r1"],
-    minWpm: 80.5, avgWpm: 90.0, maxWpm: 100.0,
+    minWpm: 80.5, avgWpm: 90.0, maxWpm: 100.0, avgAcc: 96.5, avgConsistency: 83.0,
     createdAt: new Date(), updatedAt: new Date(),
   }
 
@@ -740,7 +740,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([historyGoal])
-    vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([{ ...mockHistoryEntry, met: false, totalMeasure: 0, failedTests: 0, minWpm: null, avgWpm: null, maxWpm: null }])
+    vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([{ ...mockHistoryEntry, met: false, totalMeasure: 0, failedTests: 0, minWpm: null, avgWpm: null, maxWpm: null, avgAcc: null, avgConsistency: null }])
     vi.spyOn(state.query, "computeStreak").mockResolvedValue(0)
 
     //@ts-ignore
@@ -750,8 +750,8 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("0d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "❌ failed": 0, "min wpm": "—", "avg wpm": "—", "max wpm": "—" }],
-      ["date", "met", "total", "target", "❌ failed", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "❌ failed": 0, "avg acc": "—", "avg consistency": "—", "min wpm": "—", "avg wpm": "—", "max wpm": "—" }],
+      ["date", "met", "total", "target", "❌ failed", "avg acc", "avg consistency", "min wpm", "avg wpm", "max wpm"]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()
@@ -772,8 +772,8 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("5d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "❌ failed": 2, "min wpm": "81", "avg wpm": "90", "max wpm": "100" }],
-      ["date", "met", "total", "target", "❌ failed", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "❌ failed": 2, "avg acc": "96.5", "avg consistency": "83.0", "min wpm": "81", "avg wpm": "90", "max wpm": "100" }],
+      ["date", "met", "total", "target", "❌ failed", "avg acc", "avg consistency", "min wpm", "avg wpm", "max wpm"]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()

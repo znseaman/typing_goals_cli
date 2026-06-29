@@ -41,6 +41,9 @@ function summarizeDayForGoal(
   const maxWpm = wpms.length > 0 ? Math.max(...wpms) : null
   const avgWpm = wpms.length > 0 ? wpms.reduce((a, b) => a + b, 0) / wpms.length : null
   const failedTests = matchingResults.reduce((sum, r) => sum + (r.restartCount || 0), 0)
+  const n = matchingResults.length
+  const avgAcc = n > 0 ? matchingResults.reduce((sum, r) => sum + r.acc, 0) / n : null
+  const avgConsistency = n > 0 ? matchingResults.reduce((sum, r) => sum + r.consistency, 0) / n : null
 
   return {
     goalId: goal.id,
@@ -57,6 +60,8 @@ function summarizeDayForGoal(
     minWpm,
     maxWpm,
     avgWpm,
+    avgAcc,
+    avgConsistency,
   }
 }
 

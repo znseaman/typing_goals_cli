@@ -13,7 +13,7 @@ const timeGoal = {
 };
 
 const makeResult = (id: string, tagId: string, wpm: number, testDuration: number, extra?: object) => ({
-  _id: id, tags: [tagId], wpm, testDuration, timestamp: 1782000000000, restartCount: 0,
+  _id: id, tags: [tagId], wpm, testDuration, timestamp: 1782000000000, restartCount: 0, acc: 95, consistency: 80,
   ...extra,
 });
 
@@ -81,6 +81,8 @@ describe("runDailySummary", () => {
       minWpm: 80,
       avgWpm: 90,
       maxWpm: 100,
+      avgAcc: 95,
+      avgConsistency: 80,
     }));
   });
 
@@ -118,6 +120,26 @@ describe("runDailySummary", () => {
       minWpm: null,
       avgWpm: null,
       maxWpm: null,
+      avgAcc: null,
+      avgConsistency: null,
+    }));
+  });
+
+  it("averages acc and consistency from matching results", async () => {
+    const r1 = makeResult("r1", "tag1", 80, 30, { acc: 96, consistency: 82 });
+    const r2 = makeResult("r2", "tag1", 90, 25, { acc: 98, consistency: 86 });
+
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([countGoal]);
+    vi.spyOn(state.query, "getResultsByUserIdBetweenTimestamps").mockResolvedValue([r1, r2] as any);
+    vi.spyOn(state.query, "getGoalsHistoryByGoalIdAndDate").mockResolvedValue(undefined);
+    const createSpy = vi.spyOn(state.query, "createGoalsHistoryEntry").mockResolvedValue({} as any);
+
+    // @ts-ignore
+    await runDailySummary(state, "2026-06-28");
+
+    expect(createSpy).toHaveBeenCalledWith(state, expect.objectContaining({
+      avgAcc: 97,
+      avgConsistency: 84,
     }));
   });
 

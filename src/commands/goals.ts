@@ -459,6 +459,8 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
           ? String(h.measure)
           : convertMillisecondsToSimplifiedTime(h.measure),
         "❌ failed": h.failedTests,
+        "avg acc": h.avgAcc != null ? h.avgAcc.toFixed(1) : "—",
+        "avg consistency": h.avgConsistency != null ? h.avgConsistency.toFixed(1) : "—",
         "min wpm": h.minWpm != null ? h.minWpm.toFixed(0) : "—",
         "avg wpm": h.avgWpm != null ? h.avgWpm.toFixed(0) : "—",
         "max wpm": h.maxWpm != null ? h.maxWpm.toFixed(0) : "—",

@@ -93,6 +93,8 @@ export const goalsHistory = pgTable('goals_history', {
   minWpm: real('min_wpm'),
   maxWpm: real('max_wpm'),
   avgWpm: real('avg_wpm'),
+  avgAcc: real('avg_acc'),
+  avgConsistency: real('avg_consistency'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at')
     .notNull()

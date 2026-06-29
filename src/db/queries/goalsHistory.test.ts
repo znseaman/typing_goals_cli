@@ -51,6 +51,8 @@ describe("Database Queries", () => {
     minWpm: 80,
     maxWpm: 100,
     avgWpm: 90,
+    avgAcc: 96.5,
+    avgConsistency: 83.0,
   });
 
   it("should insert and fetch goal history entries by goalId", async () => {

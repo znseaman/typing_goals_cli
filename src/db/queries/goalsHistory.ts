@@ -19,6 +19,8 @@ export type GoalsHistoryInsert = {
   minWpm: number | null
   maxWpm: number | null
   avgWpm: number | null
+  avgAcc: number | null
+  avgConsistency: number | null
 }
 
 export type GoalsHistoryQueries = {
