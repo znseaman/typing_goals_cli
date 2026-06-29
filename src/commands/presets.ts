@@ -176,7 +176,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         objects.push({
           name: tag.name,
           "associated preset": tagMatchingPreset.length > 0 ? `${tagMatchingPreset.join('')}`: "❌",
-          "preset mode": mode ? `${mode} ${mode2}` : "❌",
+          "preset mode": mode && mode2 ? `${mode} ${mode2}` : "❌",
           "🏆 pb": pb?.wpm ?? "❌",
           "pb date": pb ? new Date(pb.timestamp).toLocaleString() : "❌",
         })
