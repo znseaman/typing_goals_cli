@@ -9,6 +9,7 @@ import { GoalWithPresetAndTag } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
 import { boldText, logger } from "../ui/logger.js";
 import { stdout } from "node:process";
+import { printGoalsStatus } from "./profile.js";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -87,7 +88,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
           streaks[goal.id] = await state.query.computeStreak(state, goal.id)
         }
 
-        printGoalsTable(goals, goalsObj, streaks, verbose)
+        await printGoalsTable(goals, goalsObj, streaks, state, verbose)
       } catch (error) {
         logger.error(`An error occurred executing "goals" command: ${(error as Error)?.message}. Please try again.`);
       }
@@ -471,11 +472,12 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
   }
 }
 
-export function printGoalsTable(
+export async function printGoalsTable(
   goals: Array<GoalWithPresetAndTag>,
   goalsObj: GoalsObject,
   streaks: Record<string, number>,
-  verbose?: boolean
+  state: State,
+  verbose?: boolean,
 ) {
   const startOfTodayUTC = getStartOfTodayUTC()
   logger.log(`\nToday's Goals 🥅 (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
@@ -528,6 +530,7 @@ export function printGoalsTable(
     totalSeconds += goalsObj[key].totalSeconds
   }
   logger.info(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
+  await printGoalsStatus(state)
 }
 
 export function validateMeasure(measure: string, type: string): string {

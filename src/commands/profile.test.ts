@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from "vitest";
-import { commandProfile, printStreak, printAllTimeLeaderboards } from "./profile.js";
+import { describe, it, test, expect, vi, afterEach } from "vitest";
+import { commandProfile, printGoalsStatus, printStreak, printAllTimeLeaderboards } from "./profile.js";
 import { State } from "../state.test.js";
 import { logger } from "../ui/logger.js";
 
@@ -98,6 +98,72 @@ describe("printStreak", () => {
     expect(successSpy).not.toHaveBeenCalled()
     expect(errorSpy).not.toHaveBeenCalled()
     expect(infoSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe("printGoalsStatus", () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it("returns early when no goals", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {})
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+
+    // @ts-ignore
+    await printGoalsStatus(state)
+
+    expect(successSpy).not.toHaveBeenCalled()
+    expect(infoSpy).not.toHaveBeenCalled()
+  })
+
+  it("logs success when all count goals are met", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([
+      { id: "g1", name: "Sprint", type: "count", measure: 2, presetId: "p1", presetName: "Normal", tagId: "tag1", timeframe: "daily" },
+    ] as any)
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([
+      { tags: ["tag1"], testDuration: 30, incompleteTestSeconds: null } as any,
+      { tags: ["tag1"], testDuration: 25, incompleteTestSeconds: null } as any,
+    ])
+    const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {})
+
+    // @ts-ignore
+    await printGoalsStatus(state)
+
+    expect(successSpy).toHaveBeenCalledWith(expect.stringContaining("1/1"))
+  })
+
+  it("logs info when not all goals are met", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([
+      { id: "g1", name: "Sprint", type: "count", measure: 5, presetId: "p1", presetName: "Normal", tagId: "tag1", timeframe: "daily" },
+    ] as any)
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([
+      { tags: ["tag1"], testDuration: 30, incompleteTestSeconds: null } as any,
+    ])
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+
+    // @ts-ignore
+    await printGoalsStatus(state)
+
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("0/1"))
+  })
+
+  it("handles time-type goals", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([
+      { id: "g1", name: "Endurance", type: "time", measure: 60000, presetId: "p1", presetName: "Normal", tagId: "tag1", timeframe: "daily" },
+    ] as any)
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([
+      { tags: ["tag1"], testDuration: 30, incompleteTestSeconds: 30 } as any,
+    ])
+    const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {})
+
+    // @ts-ignore
+    await printGoalsStatus(state)
+
+    expect(successSpy).toHaveBeenCalledWith(expect.stringContaining("1/1"))
   })
 })
 

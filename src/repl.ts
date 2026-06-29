@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { printStreak } from "./commands/profile.js";
+import { printGoalsStatus, printStreak } from "./commands/profile.js";
 import { runBackfill, runDailySummary } from "./goalsSummarizer.js";
 import { initializeReadlineHandlers, showPrompt, type State } from "./state.js";
 import { logger } from "./ui/logger.js";
@@ -15,6 +15,7 @@ export async function startREPL(state: State) {
     const requestOptions = state.config.createRequestOptions("GET")
     const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
     printStreak(streakResponse)
+    await printGoalsStatus(state).catch(() => {})
     runBackfill(state).catch(() => {})
     scheduleDailySummary(state)
   } else if (displayName) {
@@ -35,6 +36,7 @@ export async function startREPL(state: State) {
         const requestOptions = state.config.createRequestOptions("GET")
         const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
         printStreak(streakResponse)
+        await printGoalsStatus(state).catch(() => {})
         runBackfill(state).catch(() => {})
         scheduleDailySummary(state)
       } catch {

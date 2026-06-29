@@ -2,6 +2,7 @@ import type { State } from "../state.js"
 import { ResultsResponse, ResultResponse } from "../monkeytype.js"
 import { convertMillisecondsToSimplifiedTime, getStartOfTodayUTC } from "../time.js";
 import { logger } from "../ui/logger.js";
+import { printGoalsStatus } from "./profile.js";
 
 export async function commandResults(state: State, args?: string[]): Promise<void> {
   const allResults = await getAllResults(state)
@@ -30,6 +31,7 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
     }
   }
   logger.info(`Time Spent Typing Today: ${convertMillisecondsToSimplifiedTime(totalSeconds * 1000) || "0 minutes"}`)
+  await printGoalsStatus(state)
 }
 
 export function printResultsTable(

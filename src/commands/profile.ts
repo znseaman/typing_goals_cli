@@ -10,7 +10,31 @@ export async function commandProfile(state: State, args?: string[]): Promise<str
   const profileResponse = await state.monkeytype.getProfile(userId, requestOptions)
   const streakResponse = state.config.get("maintainStreak") ? await state.monkeytype.getStreak(requestOptions) : {}
 
-  printProfile(profileResponse, streakResponse)
+  await printProfile(profileResponse, streakResponse, state)
+}
+
+export async function printGoalsStatus(state: State): Promise<void> {
+  const goals = await state.query.getGoalsByUserId(state)
+  if (!goals?.length) return
+
+  const startOfTodayUTC = getStartOfTodayUTC()
+  const todayResults = await state.query.getResultsByUserIdAndAfterTimestamp(state, startOfTodayUTC)
+
+  let metCount = 0
+  for (const goal of goals) {
+    const matching = todayResults.filter(r => r.tags[0] === goal.tagId)
+    let met: boolean
+    if (goal.type === "count") {
+      met = matching.length >= goal.measure
+    } else {
+      const totalMs = matching.reduce((sum, r) => sum + r.testDuration * 1000 + (r.incompleteTestSeconds || 0) * 1000, 0)
+      met = totalMs >= goal.measure
+    }
+    if (met) metCount++
+  }
+
+  const allMet = metCount === goals.length
+  logger[allMet ? "success" : "info"](`Goals Today: ${metCount}/${goals.length} completed${allMet ? " 🎯" : ""}`)
 }
 
 export function printStreak(streakResponse: StreakResponse | {}) {
@@ -32,7 +56,7 @@ export function printStreak(streakResponse: StreakResponse | {}) {
   }
 }
 
-export async function printProfile(profileResponse: ProfileResponse, streakResponse: StreakResponse | {}) {
+export async function printProfile(profileResponse: ProfileResponse, streakResponse: StreakResponse | {}, state: State) {
   const {name, addedAt, streak, maxStreak, xp, typingStats, personalBests, details, allTimeLbs} = profileResponse.data
 
   const pfd = [{
@@ -48,6 +72,7 @@ export async function printProfile(profileResponse: ProfileResponse, streakRespo
   console.table(pfd, Object.keys(pfd?.[0] || {}))
 
   printStreak(streakResponse)
+  await printGoalsStatus(state)
 
   const stats = [{
     "tests started": typingStats.startedTests,
@@ -57,7 +82,7 @@ export async function printProfile(profileResponse: ProfileResponse, streakRespo
   logger.log(`\nTyping Stats:`)
   console.table(stats, Object.keys(stats?.[0] || {}))
 
-  printAllTimeLeaderboards(profileResponse)
+  await printAllTimeLeaderboards(profileResponse)
 
   // Display time personal bests
   const pbs = []
