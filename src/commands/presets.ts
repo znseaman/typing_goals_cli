@@ -1,5 +1,5 @@
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
-import { emojiForPresetConfigOption, getFieldsFromConfig, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
+import { emojiForPresetConfigOption, getFieldsFromConfig, presetResponseSchema, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { read } from "read"
 import { logger } from "../ui/logger.js"
 
@@ -86,7 +86,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
           // verify that there's only one tag in the preset
           if (preset?.config?.tags?.length != 1) {
-            logger.log(`Skipping preset "${preset.name}" due to the number of tags: ${preset?.config?.tags?.length}. There can only be one tag in a preset.`)
+            logger.warn(`Skipping preset "${preset.name}" due to the number of tags: ${preset?.config?.tags?.length}. There can only be one tag in a preset.`)
             continue
           }
 
@@ -105,6 +105,12 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
             }
           }
 
+          const validation = presetResponseSchema.safeParse(preset)
+          if (!validation.success) {
+            logger.warn(`Skipping preset "${preset.name}" due to a validation failure: ${validation.error.message}`)
+            continue
+          }
+
           const saved = await state.query.createPreset(state, preset._id, preset.name, preset)
           if (saved) {
             console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
@@ -120,6 +126,8 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
     if (printPresets) {
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
+
+      console.log(JSON.stringify(presets.data[presets.data.length - 1], null, 2))
 
       const goals = await state.query.getGoalsByUserId(state)
 

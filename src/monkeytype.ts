@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 // used for sign in with password
 const MONKEYTYPE_SIGN_IN_BASE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 const MONKEYTYPE_GOOGLE_APIS_IDENTITY_TOOLKIT_KEY = "AIzaSyB5m_AnO575kvWriahcF1SFIWp8Fj3gQno"
@@ -76,109 +78,112 @@ export interface PresetsResponse {
   message: string
 }
 
-export interface PresetResponse {
-  _id: string
-  config: PresetConfig
-  name: string
-  settingGroups: unknown
-}
+export const presetConfigSchema = z.looseObject({
+  punctuation: z.boolean().optional(),
+  numbers: z.boolean().optional(),
+  words: z.number().optional(),
+  time: z.number().optional(),
+  mode: z.string().optional(),
+  quoteLength: z.array(z.number()).optional(),
+  language: z.string().optional(),
+  burstHeatmap: z.boolean().optional(),
+  difficulty: z.string().optional(),
+  quickRestart: z.string().optional(),
+  repeatQuotes: z.string().optional(),
+  resultSaving: z.boolean().optional(),
+  blindMode: z.boolean().optional(),
+  alwaysShowWordsHistory: z.boolean().optional(),
+  singleListCommandLine: z.string().optional(),
+  minWpm: z.string().optional(),
+  minWpmCustomSpeed: z.number().optional(),
+  minAcc: z.string().optional(),
+  minAccCustom: z.number().optional(),
+  minBurst: z.string().optional(),
+  minBurstCustomSpeed: z.number().optional(),
+  britishEnglish: z.boolean().optional(),
+  funbox: z.array(z.unknown()).optional(),
+  customLayoutfluid: z.array(z.string()).optional(),
+  customPolyglot: z.array(z.string()).optional(),
+  freedomMode: z.boolean().optional(),
+  strictSpace: z.boolean().optional(),
+  oppositeShiftMode: z.string().optional(),
+  stopOnError: z.string().optional(),
+  confidenceMode: z.string().optional(),
+  quickEnd: z.boolean().optional(),
+  indicateTypos: z.string().optional(),
+  compositionDisplay: z.string().optional(),
+  hideExtraLetters: z.boolean().optional(),
+  lazyMode: z.boolean().optional(),
+  layout: z.string().optional(),
+  codeUnindentOnBackspace: z.boolean().optional(),
+  soundVolume: z.number().optional(),
+  playSoundOnClick: z.string().optional(),
+  playSoundOnError: z.string().optional(),
+  playTimeWarning: z.string().optional(),
+  smoothCaret: z.string().optional(),
+  caretStyle: z.string().optional(),
+  paceCaret: z.string().optional(),
+  paceCaretCustomSpeed: z.number().optional(),
+  paceCaretStyle: z.string().optional(),
+  repeatedPace: z.boolean().optional(),
+  timerStyle: z.string().optional(),
+  liveSpeedStyle: z.string().optional(),
+  liveAccStyle: z.string().optional(),
+  liveBurstStyle: z.string().optional(),
+  timerColor: z.string().optional(),
+  timerOpacity: z.string().optional(),
+  highlightMode: z.string().optional(),
+  typedEffect: z.string().optional(),
+  tapeMode: z.string().optional(),
+  tapeMargin: z.number().optional(),
+  smoothLineScroll: z.boolean().optional(),
+  showAllLines: z.boolean().optional(),
+  alwaysShowDecimalPlaces: z.boolean().optional(),
+  typingSpeedUnit: z.string().optional(),
+  startGraphsAtZero: z.boolean().optional(),
+  maxLineWidth: z.number().optional(),
+  fontSize: z.number().optional(),
+  fontFamily: z.string().optional(),
+  keymapMode: z.string().optional(),
+  keymapLayout: z.string().optional(),
+  keymapStyle: z.string().optional(),
+  keymapLegendStyle: z.string().optional(),
+  keymapShowTopRow: z.string().optional(),
+  keymapSize: z.number().optional(),
+  flipTestColors: z.boolean().optional(),
+  colorfulMode: z.boolean().optional(),
+  customBackground: z.string().optional(),
+  customBackgroundSize: z.string().optional(),
+  customBackgroundFilter: z.array(z.number()).optional(),
+  autoSwitchTheme: z.boolean().optional(),
+  themeLight: z.string().optional(),
+  themeDark: z.string().optional(),
+  randomTheme: z.string().optional(),
+  favThemes: z.array(z.unknown()).optional(),
+  theme: z.string().optional(),
+  customTheme: z.boolean().optional(),
+  customThemeColors: z.array(z.string()).optional(),
+  showKeyTips: z.boolean().optional(),
+  showOutOfFocusWarning: z.boolean().optional(),
+  capsLockWarning: z.boolean().optional(),
+  showAverage: z.string().optional(),
+  showPb: z.boolean().optional(),
+  accountChart: z.array(z.string()).optional(),
+  monkey: z.boolean().optional(),
+  monkeyPowerLevel: z.string().optional(),
+  ads: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+})
 
-export interface PresetConfig {
-  punctuation?: boolean
-  numbers?: boolean
-  words?: number
-  time?: number
-  mode?: string
-  quoteLength?: number[]
-  language?: string
-  burstHeatmap?: boolean
-  difficulty?: string
-  quickRestart?: string
-  repeatQuotes?: string
-  resultSaving?: boolean
-  blindMode?: boolean
-  alwaysShowWordsHistory?: boolean
-  singleListCommandLine?: string
-  minWpm?: string
-  minWpmCustomSpeed?: number
-  minAcc?: string
-  minAccCustom?: number
-  minBurst?: string
-  minBurstCustomSpeed?: number
-  britishEnglish?: boolean
-  funbox?: any[]
-  customLayoutfluid?: string[]
-  customPolyglot?: string[]
-  freedomMode?: boolean
-  strictSpace?: boolean
-  oppositeShiftMode?: string
-  stopOnError?: string
-  confidenceMode?: string
-  quickEnd?: boolean
-  indicateTypos?: string
-  compositionDisplay?: string
-  hideExtraLetters?: boolean
-  lazyMode?: boolean
-  layout?: string
-  codeUnindentOnBackspace?: boolean
-  soundVolume?: number
-  playSoundOnClick?: string
-  playSoundOnError?: string
-  playTimeWarning?: string
-  smoothCaret?: string
-  caretStyle?: string
-  paceCaret?: string
-  paceCaretCustomSpeed?: number
-  paceCaretStyle?: string
-  repeatedPace?: boolean
-  timerStyle?: string
-  liveSpeedStyle?: string
-  liveAccStyle?: string
-  liveBurstStyle?: string
-  timerColor?: string
-  timerOpacity?: string
-  highlightMode?: string
-  typedEffect?: string
-  tapeMode?: string
-  tapeMargin?: number
-  smoothLineScroll?: boolean
-  showAllLines?: boolean
-  alwaysShowDecimalPlaces?: boolean
-  typingSpeedUnit?: string
-  startGraphsAtZero?: boolean
-  maxLineWidth?: number
-  fontSize?: number
-  fontFamily?: string
-  keymapMode?: string
-  keymapLayout?: string
-  keymapStyle?: string
-  keymapLegendStyle?: string
-  keymapShowTopRow?: string
-  keymapSize?: number
-  flipTestColors?: boolean
-  colorfulMode?: boolean
-  customBackground?: string
-  customBackgroundSize?: string
-  customBackgroundFilter?: number[]
-  autoSwitchTheme?: boolean
-  themeLight?: string
-  themeDark?: string
-  randomTheme?: string
-  favThemes?: any[]
-  theme?: string
-  customTheme?: boolean
-  customThemeColors?: string[]
-  showKeyTips?: boolean
-  showOutOfFocusWarning?: boolean
-  capsLockWarning?: boolean
-  showAverage?: string
-  showPb?: boolean
-  accountChart?: string[]
-  monkey?: boolean
-  monkeyPowerLevel?: string
-  ads?: string
-  tags?: string[]
-}
+export const presetResponseSchema = z.object({
+  _id: z.string(),
+  name: z.string(),
+  config: presetConfigSchema,
+  settingGroups: z.unknown().optional(),
+})
+
+export type PresetConfig = z.infer<typeof presetConfigSchema>
+export type PresetResponse = z.infer<typeof presetResponseSchema>
 
 export const emojiForPresetConfigOption: Record<string, any> = {
   blindMode: `🙈 blind`,

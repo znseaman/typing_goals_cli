@@ -141,6 +141,50 @@ describe("commandPresets", () => {
   });
 });
 
+describe("commandPresets - validation failures", () => {
+  test.each([
+    {
+      description: "non-string _id",
+      preset: { _id: 123, config: { mode: "words", words: 25, tags: ["tagId1"] }, name: "Preset 1" },
+    },
+    {
+      description: "missing name",
+      preset: { _id: "presetId1", config: { mode: "words", words: 25, tags: ["tagId1"] } },
+    },
+    {
+      description: "wrong type for config field",
+      preset: { _id: "presetId1", config: { mode: "words", words: "not-a-number", tags: ["tagId1"] }, name: "Preset 1" },
+    },
+  ])("skips preset with $description due to validation failure", async ({ preset }) => {
+    const state = new State()
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({ data: tags1 })
+    vi.spyOn(state.query, "getTagById").mockResolvedValue(true)
+    vi.spyOn(state.query, "editTagById").mockResolvedValue({ id: tags1[0]._id, name: tags1[0].name })
+    // @ts-ignore
+    vi.spyOn(state.monkeytype, "getPresets").mockResolvedValue({ data: [preset] })
+    vi.spyOn(state.query, "getPresetById").mockResolvedValue(false)
+    const createPresetSpy = vi.spyOn(state.query, "createPreset")
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals1)
+
+    // @ts-ignore
+    await commandPresets(state, [])
+
+    expect(warnSpy).toHaveBeenCalledOnce()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("validation failure"))
+    expect(createPresetSpy).not.toHaveBeenCalled()
+    // debugSpy called once for editTagById, not for createPreset
+    expect(debugSpy).toHaveBeenCalledTimes(1)
+
+    warnSpy.mockRestore()
+    debugSpy.mockRestore()
+    logSpy.mockRestore()
+  })
+})
+
 describe("getExtraPresetOptions", () => {
   test.each([
     { presetConfig: {}, expected: "", description: "should return '' when no preset config exists" },
