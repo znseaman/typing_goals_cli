@@ -445,7 +445,6 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
 
     const streak = await state.query.computeStreak(state, goal.id)
     const daysMet = history.filter(h => h.met).length
-    logger.log(`\nGoal: ${goal.name} — ${daysMet}/${history.length} days met | ${streak === 0 ? `🧊`: `🔥`} ${streak}d streak`)
 
     const rows = history.map(h => {
       const totalDisplay = goal.type === "count"
@@ -468,7 +467,8 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
       }
     })
 
-    console.table(rows, Object.keys(rows[0]))
+    logger.title(`\nGoal: ${goal.name} — ${daysMet}/${history.length} days met | ${streak === 0 ? `🧊`: `🔥`} ${streak}d streak`)
+    logger.table(rows)
   }
 }
 
@@ -480,7 +480,6 @@ export async function printGoalsTable(
   verbose?: boolean,
 ) {
   const startOfTodayUTC = getStartOfTodayUTC()
-  logger.log(`\nToday's Goals 🥅 (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
 
   const objects = []
   for (let goal of goals) {
@@ -523,7 +522,8 @@ export async function printGoalsTable(
     })
   }
 
-  console.table(objects, Object.keys(objects?.[0] || {}))
+  logger.title(`\nToday's Goals 🥅 (Since ${new Date(startOfTodayUTC).toLocaleString()})`)
+  logger.table(objects)
 
   let totalSeconds = 0
   for (const [key, _] of Object.entries(goalsObj)) {

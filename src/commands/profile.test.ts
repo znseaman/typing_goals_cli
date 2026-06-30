@@ -38,7 +38,7 @@ describe("commandProfile", () => {
     { maintainStreak: false },
   ])("should fetch profile (maintainStreak: $maintainStreak)", async ({ maintainStreak }) => {
     const state = new State()
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const loggerSpy = vi.spyOn(logger, "log").mockImplementation(() => {})
     const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {})
@@ -134,7 +134,7 @@ describe("printGoalsStatus", () => {
     expect(successSpy).toHaveBeenCalledWith(expect.stringContaining("1/1"))
   })
 
-  it("logs info when not all goals are met", async () => {
+  it("logs error when not all goals are met", async () => {
     const state = new State()
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([
       { id: "g1", name: "Sprint", type: "count", measure: 5, presetId: "p1", presetName: "Normal", tagId: "tag1", timeframe: "daily" },
@@ -142,12 +142,12 @@ describe("printGoalsStatus", () => {
     vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([
       { tags: ["tag1"], testDuration: 30, incompleteTestSeconds: null } as any,
     ])
-    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
     // @ts-ignore
     await printGoalsStatus(state)
 
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining("0/1"))
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("0/1"))
   })
 
   it("handles time-type goals", async () => {
@@ -169,7 +169,7 @@ describe("printGoalsStatus", () => {
 
 describe("printAllTimeLeaderboards", () => {
   test("should print leaderboard table with rank data", () => {
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const loggerSpy = vi.spyOn(logger, "log").mockImplementation(() => {})
 

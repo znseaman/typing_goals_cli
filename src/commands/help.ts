@@ -2,9 +2,9 @@ import { State } from "../state.js";
 import { logger } from "../ui/logger.js";
 
 export async function commandHelp(state: State, args?: string[]) {
-  logger.log("\nTyping Goals CLI Help 🤔\n")
+  logger.title("\nTyping Goals CLI Help 🤔")
 
-  logger.log("Available commands:\n");
+  logger.log("\nAvailable commands:\n");
   for (const commandName in state.commands) {
     const command = state.commands[commandName];
     const usageOrName = command.usage ? command.usage : command.name

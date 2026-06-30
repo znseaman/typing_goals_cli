@@ -40,6 +40,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "cli-table3": "^0.6.5",
     "conf": "^15.1.0",
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",

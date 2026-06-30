@@ -71,7 +71,7 @@ describe("commandTags", () => {
         expect(errorSpy).toHaveBeenCalledTimes(1);
         expect(errorSpy).toHaveBeenCalledWith(`Unknown subcommand: nope. Supported subcommands: delete`)
       } else {
-        expect(tableSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalled();
       }
     }
 

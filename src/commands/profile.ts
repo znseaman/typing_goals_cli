@@ -34,7 +34,7 @@ export async function printGoalsStatus(state: State): Promise<void> {
   }
 
   const allMet = metCount === goals.length
-  logger[allMet ? "success" : "info"](`Goals Today: ${metCount}/${goals.length} completed${allMet ? " 🎯" : ""}`)
+  logger[allMet ? "success" : "error"](`Goals Today: ${metCount}/${goals.length} completed${allMet ? " 🎯" : ""}`)
 }
 
 export function printStreak(streakResponse: StreakResponse | {}) {
@@ -62,14 +62,14 @@ export async function printProfile(profileResponse: ProfileResponse, streakRespo
   const pfd = [{
     name: name,
     joined: `${new Date(addedAt).toLocaleString()}`,
-    "current streak": `${streak} days`,
-    "max streak": `${maxStreak} days`,
+    "current streak": `${streak > 0 ? `🔥` : `🧊`} ${streak} days`,
+    "max streak": `${maxStreak > 0 ? `🔥` : `🧊`} ${maxStreak} days`,
     xp: xp,
     bio: details.bio,
     keyboard: details.keyboard,
   }]
-  logger.log(`\nYour MonkeyType Profile:`)
-  console.table(pfd, Object.keys(pfd?.[0] || {}))
+  logger.title(`\nYour MonkeyType Profile`)
+  logger.table(pfd)
 
   printStreak(streakResponse)
   await printGoalsStatus(state)
@@ -79,8 +79,8 @@ export async function printProfile(profileResponse: ProfileResponse, streakRespo
     "tests completed": typingStats.completedTests,
     "time typing": `${convertMillisecondsToSimplifiedTime(Number(typingStats.timeTyping) * 1000)}`,
   }]
-  logger.log(`\nTyping Stats:`)
-  console.table(stats, Object.keys(stats?.[0] || {}))
+  logger.title(`\nTyping Stats`)
+  logger.table(stats)
 
   await printAllTimeLeaderboards(profileResponse)
 
@@ -112,8 +112,8 @@ export async function printProfile(profileResponse: ProfileResponse, streakRespo
     })
   }
   
-  logger.log(`\nYour PBs 🏆:`)
-  console.table(pbs, Object.keys(pbs?.[0] || {}))
+  logger.title(`\nYour PBs 🏆`)
+  logger.table(pbs)
 }
 
 export async function printAllTimeLeaderboards(profileResponse: ProfileResponse){
@@ -134,6 +134,6 @@ export async function printAllTimeLeaderboards(profileResponse: ProfileResponse)
     }
   }
 
-  logger.log(`\nYour All-Time English Leaderboards 👑:`)
-  console.table(atlbs, Object.keys(atlbs?.[0] || {}))
+  logger.title(`\nYour All-Time English Leaderboards 👑`)
+  logger.table(atlbs)
 }

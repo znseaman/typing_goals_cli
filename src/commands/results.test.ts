@@ -19,7 +19,7 @@ vi.mock("read", async (importOriginal) => {
 
 describe("printResultsTable", () => {
   test("should print results table", async () => {
-    const tableSpy = vi.spyOn(console, 'table').mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, 'table').mockImplementation(() => {});
 
     // const results = [{wpm: 78, raw: 89, accuracy: 79, consistency: 85, charStats: [10, 0, 0, 0], mode: "word", mode2: 25, timestamp: Date.now(), tags: ["tagId1"]}]
     const tagsObj = { tagId1: { name: "tag 1"}}

@@ -124,7 +124,6 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       const goals = await state.query.getGoalsByUserId(state)
 
       const objects = []
-      logger.log(`\nYour Presets 🔧:`)
       for (let preset of presets.data) {
         let presetConfig = preset?.config
         let mode = presetConfig?.mode
@@ -150,7 +149,8 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         })
       }
 
-      console.table(objects, Object.keys(objects?.[0] || {}))
+      logger.title(`\nYour Presets 🔧`)
+      logger.table(objects)
     }
 
     if (printTags) {
@@ -158,7 +158,6 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       tags.data.sort((a: TagResponse, b: TagResponse) => a.name.localeCompare(b.name))
 
       const objects = []
-      logger.log(`\nYour Tags 🏷️:`)
       for (let tag of tags.data) {
         let preset = presets?.data.find((preset) => preset?.config?.tags?.join('') === tag._id)
         let presetConfig = preset?.config
@@ -182,7 +181,8 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         })
       }
 
-      console.table(objects, Object.keys(objects?.[0] || {}))
+      logger.title(`\nYour Tags 🏷️`)
+      logger.table(objects)
     }
   } catch (error) {
     logger.error(`Failed to fetch presets: ${(error as Error).message}`)

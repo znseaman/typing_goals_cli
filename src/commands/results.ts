@@ -19,8 +19,6 @@ export async function commandResults(state: State, args?: string[]): Promise<voi
     }
   }
 
-  const startOfTodayUTC = getStartOfTodayUTC()
-  logger.log(`\nToday's Results ⌨️ (Since ${new Date(startOfTodayUTC).toLocaleString()}):`)
   printResultsTable(allResults, tagsObj)
 
   let totalSeconds = 0
@@ -59,7 +57,9 @@ export function printResultsTable(
     objects.push(object)
   }
 
-  console.table(objects, Object.keys(objects[0]))
+  const startOfTodayUTC = getStartOfTodayUTC()
+  logger.title(`\nToday's Results ⌨️ (Since ${new Date(startOfTodayUTC).toLocaleString()})`)
+  logger.table(objects)
 }
 
 export async function getAllResults(state: State): Promise<ResultResponse[] | void>  {

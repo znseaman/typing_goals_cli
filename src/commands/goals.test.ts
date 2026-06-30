@@ -33,15 +33,18 @@ vi.mock("read", async (importOriginal) => {
 describe("printGoalsTable", () => {
   test("should print goals table (non-verbose)", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
 
     const goals: GoalWithPresetAndTag[] = [{presetId: "presetId1", name: "Normal", id: "lol", type: "count", measure: 2, presetName: "Preset 1", tagId: "tagId1", timeframe: "daily"}]
     const goalsObj = { tagId1: { name: "tag 1"}}
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([])
     const verbose = false
-    
+
     // @ts-ignore
-    await printGoalsTable(goals, goalsObj, {}, verbose);
+    await printGoalsTable(goals, goalsObj, {}, state, verbose);
 
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(tableSpy).toHaveBeenCalledTimes(1);
@@ -53,7 +56,7 @@ describe("printGoalsTable", () => {
 
   test("should print goals table (verbose)", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
 
     const goals: GoalWithPresetAndTag[] = [
@@ -62,14 +65,14 @@ describe("printGoalsTable", () => {
     ]
     const goalsObj: GoalsObject = {
       // @ts-ignore
-      tagId1: { 
+      tagId1: {
         name: "tag 1",
         count: 2,
         // @ts-ignore
         presetConfig: { mode: "words", words: 25, difficulty: "master", language: "english", oppositeShiftMode: true, minWpmCustomSpeed: 70, minAccCustom: 100, minBurstCustomSpeed: 100 }
       },
       // @ts-ignore
-      tagId2: { 
+      tagId2: {
         name: "tag 2",
         count: 2,
         totalSeconds: 60,
@@ -77,10 +80,13 @@ describe("printGoalsTable", () => {
         presetConfig: { mode: "time", time: 15, difficulty: "master", language: "english", oppositeShiftMode: false, minWpmCustomSpeed: 70, minAccCustom: 100, minBurstCustomSpeed: 100 }
       }
     }
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([])
     const verbose = true
-    
+
     // @ts-ignore
-    await printGoalsTable(goals, goalsObj, {}, verbose);
+    await printGoalsTable(goals, goalsObj, {}, state, verbose);
 
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(tableSpy).toHaveBeenCalledTimes(1);
@@ -113,19 +119,6 @@ describe("printGoalsTable", () => {
         "❌ failed": 0,
         "🏆 pb": "N/A",
       },
-    ], [
-      "status",
-      "name",
-      "type",
-      "target",
-      "to go",
-      "streak",
-      "total time",
-      "total tests",
-      "❌ failed",
-      "🏆 pb",
-      "pb date",
-      "associated preset",
     ])
     expect(infoSpy).toHaveBeenCalledTimes(1);
 
@@ -136,7 +129,7 @@ describe("printGoalsTable", () => {
 
   test("should show 🔥 streak when streak is non-zero", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
 
     const goals: GoalWithPresetAndTag[] = [
@@ -145,13 +138,15 @@ describe("printGoalsTable", () => {
     // @ts-ignore
     const goalsObj: GoalsObject = { tagId1: { name: "tag 1", count: 3, presetConfig: {} } }
     const streaks = { g1: 3 }
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([])
 
     // @ts-ignore
-    printGoalsTable(goals, goalsObj, streaks, false)
+    printGoalsTable(goals, goalsObj, streaks, state)
 
     expect(tableSpy).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ "streak": "🔥 3d" })]),
-      expect.any(Array)
+      expect.arrayContaining([expect.objectContaining({ "streak": "🔥 3d" })])
     )
 
     logSpy.mockRestore();
@@ -161,7 +156,7 @@ describe("printGoalsTable", () => {
 
   test("should show 🧊 Nd when streak is 0", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
 
     const goals: GoalWithPresetAndTag[] = [
@@ -170,13 +165,15 @@ describe("printGoalsTable", () => {
     // @ts-ignore
     const goalsObj: GoalsObject = { tagId1: { name: "tag 1", count: 1, presetConfig: {} } }
     const streaks = { g1: 0 }
+    const state = new State()
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getResultsByUserIdAndAfterTimestamp").mockResolvedValue([])
 
     // @ts-ignore
-    printGoalsTable(goals, goalsObj, streaks, false)
+    printGoalsTable(goals, goalsObj, streaks, state)
 
     expect(tableSpy).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ "streak": "🧊 0d" })]),
-      expect.any(Array)
+      expect.arrayContaining([expect.objectContaining({ "streak": "🧊 0d" })])
     )
 
     logSpy.mockRestore();
@@ -254,7 +251,7 @@ describe("commandGoals", () => {
   ("commandGoals(state, $args)", async ({args, goals, tags, presets, results, logOutput}) => {
     const state = new State()
     const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
     const getGoalsByUserIdSpy = vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals)
@@ -274,8 +271,9 @@ describe("commandGoals", () => {
       expect(tableSpy).toHaveBeenCalledTimes(1)
       expect(infoSpy).toHaveBeenCalledTimes(1)
     }
-    
-    expect(getGoalsByUserIdSpy).toHaveBeenCalledTimes(1)
+
+    // getGoalsByUserId is called once in commandGoals; printGoalsStatus (via printGoalsTable) calls it again when there are results
+    expect(getGoalsByUserIdSpy).toHaveBeenCalledTimes(results.length ? 2 : 1)
     if (tags.length) {
       expect(getTagsSpy).toHaveBeenCalledTimes(1)
     }
@@ -308,7 +306,7 @@ describe("commandGoals", () => {
     );
 
     const state = new State()
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {});
     const getGoalsByUserIdSpy = vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals1)
@@ -326,7 +324,8 @@ describe("commandGoals", () => {
       expect(infoSpy).toHaveBeenCalledTimes(1)
     }
 
-    expect(getGoalsByUserIdSpy).toHaveBeenCalledTimes(1)
+    // printGoalsStatus (via printGoalsTable) calls getGoalsByUserId a second time
+    expect(getGoalsByUserIdSpy).toHaveBeenCalledTimes(2)
     expect(getTagsSpy).toHaveBeenCalledTimes(1)
 
     tableSpy.mockRestore()
@@ -738,7 +737,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
   test("prints history table with 0 streak (🧊)", async () => {
     const state = new State()
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([historyGoal])
     vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([{ ...mockHistoryEntry, met: false, totalMeasure: 0, failedTests: 0, minWpm: null, avgWpm: null, maxWpm: null, avgAcc: null, avgConsistency: null }])
     vi.spyOn(state.query, "computeStreak").mockResolvedValue(0)
@@ -750,8 +749,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("0d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "❌ failed": 0, "avg acc": "—", "avg consistency": "—", "min wpm": "—", "avg wpm": "—", "max wpm": "—" }],
-      ["date", "met", "total", "target", "❌ failed", "avg acc", "avg consistency", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "❌", total: "0", target: "2", "❌ failed": 0, "avg acc": "—", "avg consistency": "—", "min wpm": "—", "avg wpm": "—", "max wpm": "—" }]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()
@@ -760,7 +758,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
   test("prints history table with active streak (🔥)", async () => {
     const state = new State()
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {})
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([historyGoal])
     vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([mockHistoryEntry])
     vi.spyOn(state.query, "computeStreak").mockResolvedValue(5)
@@ -772,8 +770,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("5d streak"))
     expect(tableSpy).toHaveBeenCalledTimes(1)
     expect(tableSpy).toHaveBeenCalledWith(
-      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "❌ failed": 2, "avg acc": "96.5", "avg consistency": "83.0", "min wpm": "81", "avg wpm": "90", "max wpm": "100" }],
-      ["date", "met", "total", "target", "❌ failed", "avg acc", "avg consistency", "min wpm", "avg wpm", "max wpm"]
+      [{ date: "2026-06-28", met: "✅", total: "3", target: "2", "❌ failed": 2, "avg acc": "96.5", "avg consistency": "83.0", "min wpm": "81", "avg wpm": "90", "max wpm": "100" }]
     )
     logSpy.mockRestore()
     tableSpy.mockRestore()
@@ -799,7 +796,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
   test("shows 1/1 days met in header when goal is met", async () => {
     const state = new State()
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    vi.spyOn(console, "table").mockImplementation(() => {})
+    vi.spyOn(logger, "table").mockImplementation(() => {})
     vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([historyGoal])
     vi.spyOn(state.query, "getGoalsHistoryByGoalId").mockResolvedValue([mockHistoryEntry])
     vi.spyOn(state.query, "computeStreak").mockResolvedValue(1)

@@ -48,7 +48,7 @@ describe("commandPresets", () => {
     const state = new State();
     const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {});
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const tableSpy = vi.spyOn(console, "table").mockImplementation(() => {});
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {});
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
   
