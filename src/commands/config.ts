@@ -1,5 +1,5 @@
 import * as fs from "node:fs/promises"
-import type { State } from "../state.js";
+import { removeReadline_runNonReadline_addReadline, type State } from "../state.js";
 import { logger } from "../ui/logger.js";
 import { initializeDB } from "../db/index.js";
 
@@ -52,10 +52,12 @@ export async function commandConfig(state: State, args?: string[]): Promise<stri
         }
 
         if (field === "dbURL") {
-          state.db = await initializeDB(state.config)
+          await removeReadline_runNonReadline_addReadline(state, "config", async () => {
+            state.db = await initializeDB(state.config)
+          })
         }
 
-        return `Successfully deleted the "${field}" field from your config!`
+        return field === "dbURL" ? `` : `Successfully deleted the "${field}" field from your config!`
       case "path":
         logger.info(`Your config file is located: ${state.config.path}`)
         return
