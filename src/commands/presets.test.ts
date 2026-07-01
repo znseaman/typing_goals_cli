@@ -1,4 +1,4 @@
-import { describe, test, vi, expect } from "vitest";
+import { describe, test, vi, expect, beforeEach } from "vitest";
 import { commandPresets, getExtraPresetOptions } from "./presets.js";
 import { State } from "../state.test.js";
 import { read } from "read"
@@ -182,6 +182,133 @@ describe("commandPresets - validation failures", () => {
     warnSpy.mockRestore()
     debugSpy.mockRestore()
     logSpy.mockRestore()
+  })
+})
+
+describe("commandPresets - create", () => {
+  beforeEach(() => {
+    vi.mocked(read).mockReset()
+  })
+
+  test("logs error for invalid preset type", async () => {
+    const state = new State()
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+    vi.mocked(read)
+      .mockResolvedValueOnce("My Preset")
+      .mockResolvedValueOnce("invalid-type")
+
+    // @ts-ignore
+    await commandPresets(state, ["create"])
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid preset type"))
+    errorSpy.mockRestore()
+  })
+
+  test("creates preset using existing tag when tag name matches", async () => {
+    const state = new State()
+
+    vi.mocked(read)
+      .mockResolvedValueOnce("My Preset")
+      .mockResolvedValueOnce("normal")
+      .mockResolvedValueOnce("Tag 1")
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({
+      data: [{ _id: "tagId1", name: "Tag 1", personalBests: {} as any }],
+      message: "Tags",
+    })
+    const postTagSpy = vi.spyOn(state.monkeytype, "postTag")
+    const postPresetSpy = vi.spyOn(state.monkeytype, "postPreset").mockResolvedValue({
+      message: "Preset created",
+      data: { presetId: "newPresetId" },
+    })
+    const createPresetSpy = vi.spyOn(state.query, "createPreset").mockResolvedValue({ id: "newPresetId", name: "My Preset" })
+
+    // @ts-ignore
+    const output = await commandPresets(state, ["create"])
+
+    expect(postTagSpy).not.toHaveBeenCalled()
+    expect(postPresetSpy).toHaveBeenCalledOnce()
+    expect(postPresetSpy).toHaveBeenCalledWith(
+      "My Preset",
+      expect.objectContaining({ tags: ["tagId1"] }),
+      ["test", "behavior", "input"],
+      undefined
+    )
+    expect(createPresetSpy).toHaveBeenCalledOnce()
+    expect(output).toContain("Preset created")
+
+    postTagSpy.mockRestore()
+    postPresetSpy.mockRestore()
+    createPresetSpy.mockRestore()
+  })
+
+  test("creates new tag via API when tag name is not found, then creates preset", async () => {
+    const state = new State()
+
+    vi.mocked(read)
+      .mockResolvedValueOnce("My Preset")
+      .mockResolvedValueOnce("normal")
+      .mockResolvedValueOnce("New Tag")
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({ data: [], message: "Tags" })
+    const postTagSpy = vi.spyOn(state.monkeytype, "postTag").mockResolvedValue({
+      message: "Tag created",
+      data: {
+        _id: "newTagId",
+        name: "New Tag",
+        personalBests: { time: {}, words: {}, quote: {}, zen: {}, custom: {} },
+      },
+    })
+    const createTagSpy = vi.spyOn(state.query, "createTag").mockResolvedValue({ id: "newTagId", name: "New Tag" })
+    const postPresetSpy = vi.spyOn(state.monkeytype, "postPreset").mockResolvedValue({
+      message: "Preset created",
+      data: { presetId: "newPresetId" },
+    })
+    const createPresetSpy = vi.spyOn(state.query, "createPreset").mockResolvedValue({ id: "newPresetId", name: "My Preset" })
+
+    // @ts-ignore
+    const output = await commandPresets(state, ["create"])
+
+    expect(postTagSpy).toHaveBeenCalledOnce()
+    expect(postTagSpy).toHaveBeenCalledWith("New Tag", undefined)
+    expect(createTagSpy).toHaveBeenCalledOnce()
+    expect(postPresetSpy).toHaveBeenCalledOnce()
+    expect(postPresetSpy).toHaveBeenCalledWith(
+      "My Preset",
+      expect.objectContaining({ tags: ["newTagId"] }),
+      ["test", "behavior", "input"],
+      undefined
+    )
+    expect(createPresetSpy).toHaveBeenCalledOnce()
+    expect(output).toContain("Preset created")
+
+    postTagSpy.mockRestore()
+    createTagSpy.mockRestore()
+    postPresetSpy.mockRestore()
+    createPresetSpy.mockRestore()
+  })
+
+  test("logs error when postPreset fails", async () => {
+    const state = new State()
+    const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+    vi.mocked(read)
+      .mockResolvedValueOnce("My Preset")
+      .mockResolvedValueOnce("normal")
+      .mockResolvedValueOnce("Tag 1")
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({
+      data: [{ _id: "tagId1", name: "Tag 1", personalBests: {} as any }],
+      message: "Tags",
+    })
+    vi.spyOn(state.monkeytype, "postPreset").mockRejectedValue(new Error("API error"))
+
+    // @ts-ignore
+    await commandPresets(state, ["create"])
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("API error"))
+    errorSpy.mockRestore()
   })
 })
 

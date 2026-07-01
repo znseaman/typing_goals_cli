@@ -17,6 +17,8 @@ const MONKEYTYPE_REFRESH_TOKEN_URL = `${
 export type MonkeyType = {
   login: (email: string, password: string) => Promise<LoginResponse | void>,
   getPresets: (requestOptions: RequestOptions) => Promise<PresetsResponse>,
+  postPreset: (name: string, config: PresetConfig, settingGroups: unknown, requestOptions: RequestOptions) => Promise<CreatePresetResponse>,
+  postTag: (name: string, requestOptions: RequestOptions) => Promise<CreateTagResponse>,
   getTags: (requestOptions: RequestOptions) => Promise<TagsResponse>,
   getResults: (offset: number, limit: number, requestOptions: RequestOptions, lastResultTimestamp: number) => Promise<ResultsResponse>,
   refreshToken: (refreshToken: string) => Promise<RefreshTokenResponse>,
@@ -206,6 +208,74 @@ export interface RequestOptions {
 
 export async function getPresets(requestOptions: RequestOptions): Promise<PresetsResponse> {
   const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/presets`, requestOptions)
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
+export interface CreatePresetResponse {
+  message: string
+  data: {
+    presetId: string
+  }
+}
+
+export async function postPreset(name: string, config: PresetConfig, settingGroups: unknown, requestOptions: RequestOptions): Promise<CreatePresetResponse> {
+  const myHeaders = new Headers(requestOptions.headers)
+  myHeaders.append("Referer", "https://monkeytype.com")
+  myHeaders.append(
+    "User-Agent",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  )
+  myHeaders.append("Content-Type", "application/json;charset=utf-8")
+
+  const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/presets`, {
+    method: "POST",
+    headers: myHeaders,
+    body: JSON.stringify({ name, config, settingGroups }),
+  })
+  if (response.status >= 400) {
+    throw new Error(
+      `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
+    )
+  } else {
+    return response.json()
+  }
+}
+
+export interface CreateTagResponse {
+  message: string
+  data: {
+    _id: string
+    name: string
+    personalBests: {
+      time: Record<string, unknown>
+      words: Record<string, unknown>
+      quote: Record<string, unknown>
+      zen: Record<string, unknown>
+      custom: Record<string, unknown>
+    }
+  }
+}
+
+export async function postTag(name: string, requestOptions: RequestOptions): Promise<CreateTagResponse> {
+  const myHeaders = new Headers(requestOptions.headers)
+  myHeaders.append("Referer", "https://monkeytype.com")
+  myHeaders.append(
+    "User-Agent",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+  )
+  myHeaders.append("Content-Type", "application/json;charset=utf-8")
+
+  const response = await fetch(`${MONKEYTYPE_API_BASE_URL}/users/tags`, {
+    method: "POST",
+    headers: myHeaders,
+    body: JSON.stringify({ tagName: name }),
+  })
   if (response.status >= 400) {
     throw new Error(
       `${response.status} - ${response.statusText}: Try running the "login" command before running this again.`,
@@ -471,6 +541,8 @@ export function getFieldsFromConfig(config: PresetConfig | undefined, personalBe
 export const monkeytype = {
   login,
   getPresets,
+  postPreset,
+  postTag,
   getTags,
   getResults,
   refreshToken,

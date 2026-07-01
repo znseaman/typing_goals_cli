@@ -1,5 +1,5 @@
 import { describe, test, vi, expect } from "vitest";
-import { getBody, getPresets, getProfile, getResults, getStreak, getTags, login, refreshToken } from "./monkeytype.js";
+import { getBody, getPresets, getProfile, getResults, getStreak, getTags, login, postPreset, postTag, refreshToken } from "./monkeytype.js";
 
 describe("getBody", () => {
   test.each([
@@ -287,6 +287,100 @@ describe("getStreak", () => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(global.fetch).toHaveBeenNthCalledWith(1, "https://api.monkeytype.com/users/streak", expect.anything())
     }
+  })
+})
+
+describe("postPreset", () => {
+  test.each([
+    { status: 200, statusText: "OK", expected: { message: "Preset created", data: { presetId: "6a444c7e61e093d47b986c7a" } } },
+    { status: 403, statusText: "Restricted", expected: `403 - Restricted: Try running the "login" command before running this again.` },
+  ])
+  ('postPreset(name, config, settingGroups, requestOptions) -> $expected', async ({ status, statusText, expected }) => {
+    // @ts-ignore
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        status,
+        statusText,
+        json: () => Promise.resolve(expected),
+      }),
+    )
+
+    const requestOptions = {
+      headers: new Headers({ Authorization: "Bearer xxxxxxxxx" }),
+      method: "POST",
+    }
+    const name = "My Preset"
+    const config = { mode: "words", words: 25 }
+    const settingGroups = ["test", "behavior", "input"]
+
+    if (status >= 400) {
+      try {
+        await postPreset(name, config, settingGroups, requestOptions)
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(expected)
+      }
+    } else {
+      const data = await postPreset(name, config, settingGroups, requestOptions)
+      expect(data).toEqual(expected)
+
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0]
+      const body = JSON.parse(fetchCall[1]!.body as string)
+      expect(body).toEqual({ name, config, settingGroups })
+    }
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      "https://api.monkeytype.com/presets",
+      expect.objectContaining({ method: "POST" })
+    )
+  })
+})
+
+describe("postTag", () => {
+  test.each([
+    { status: 200, statusText: "OK", expected: { message: "Tag created", data: { _id: "tagId1", name: "My Tag", personalBests: { time: {}, words: {}, quote: {}, zen: {}, custom: {} } } } },
+    { status: 403, statusText: "Restricted", expected: `403 - Restricted: Try running the "login" command before running this again.` },
+  ])
+  ('postTag(name, requestOptions) -> $expected', async ({ status, statusText, expected }) => {
+    // @ts-ignore
+    global.fetch = vi.fn(() =>
+      Promise.resolve({
+        status,
+        statusText,
+        json: () => Promise.resolve(expected),
+      }),
+    )
+
+    const requestOptions = {
+      headers: new Headers({ Authorization: "Bearer xxxxxxxxx" }),
+      method: "POST",
+    }
+    const name = "My Tag"
+
+    if (status >= 400) {
+      try {
+        await postTag(name, requestOptions)
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(expected)
+      }
+    } else {
+      const data = await postTag(name, requestOptions)
+      expect(data).toEqual(expected)
+
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0]
+      const body = JSON.parse(fetchCall[1]!.body as string)
+      expect(body).toEqual({ tagName: name })
+    }
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      1,
+      "https://api.monkeytype.com/users/tags",
+      expect.objectContaining({ method: "POST" })
+    )
   })
 })
 

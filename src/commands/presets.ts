@@ -1,3 +1,4 @@
+import { createInterface } from "node:readline"
 import { removeReadline_runNonReadline_addReadline, type State } from "../state.js"
 import { emojiForPresetConfigOption, getFieldsFromConfig, presetResponseSchema, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { read } from "read"
@@ -5,10 +6,154 @@ import { logger } from "../ui/logger.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
+export const PRESET_TEMPLATES: Array<Pick<PresetResponse, 'name' | 'config' | 'settingGroups'>> = [
+  {
+    name: "accuracyW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "master", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: false, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 70, minAcc: "custom", minAccCustom: 100, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: true, oppositeShiftMode: "on", stopOnError: "off", confidenceMode: "off", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "adaptabilityW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "expert", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: false, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 70, minAcc: "off", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "off", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "consistencyW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: true, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 75, minAcc: "off", minAccCustom: 96, minBurst: "fixed", minBurstCustomSpeed: 40, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "on", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "javascript",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "code_javascript", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: false, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 40, minAcc: "off", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "off", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "normalW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: false, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "off", minWpmCustomSpeed: 100, minAcc: "custom", minAccCustom: 95, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "off", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "powerW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: true, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 80, minAcc: "off", minAccCustom: 0, minBurst: "fixed", minBurstCustomSpeed: 40, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "max", quickEnd: true, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "speedW25",
+    config: { punctuation: true, numbers: true, words: 25, time: 0, mode: "words", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 90, minAcc: "off", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "on", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "T15",
+    config: { punctuation: false, numbers: false, words: 0, time: 15, mode: "time", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 80, minAcc: "off", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "on", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "T30",
+    config: { punctuation: false, numbers: false, words: 0, time: 30, mode: "time", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 80, minAcc: "custom", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "on", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+  {
+    name: "T60",
+    config: { punctuation: false, numbers: false, words: 0, time: 60, mode: "time", quoteLength: [1], language: "english", burstHeatmap: true, difficulty: "normal", quickRestart: "esc", repeatQuotes: "off", resultSaving: true, blindMode: true, alwaysShowWordsHistory: false, singleListCommandLine: "manual", minWpm: "custom", minWpmCustomSpeed: 80, minAcc: "off", minAccCustom: 96, minBurst: "off", minBurstCustomSpeed: 100, britishEnglish: false, funbox: [], customLayoutfluid: ["qwerty", "dvorak", "colemak"], customPolyglot: ["english", "spanish", "french", "german"], freedomMode: false, strictSpace: false, oppositeShiftMode: "off", stopOnError: "off", confidenceMode: "on", quickEnd: false, indicateTypos: "off", compositionDisplay: "replace", hideExtraLetters: false, lazyMode: false, layout: "default", codeUnindentOnBackspace: false, tags: [] },
+    settingGroups: ["test", "behavior", "input"],
+  },
+]
+
 export async function commandPresets(state: State, args?: string[]): Promise<string | void> {
   if (args && args.length) {
     const [subcommand] = args
     switch (subcommand) {
+      case "create":
+        try {
+          return await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
+            const PRESET_TYPES = [
+              "accuracy", "adaptability", "consistency", "javascript", "normal",
+              "power", "speed", "time 15", "time 30", "time 60", "custom",
+            ] as const
+            const PRESET_TYPE_TO_NAME: Record<string, string> = {
+              "accuracy":     "accuracyW25",
+              "adaptability": "adaptabilityW25",
+              "consistency":  "consistencyW25",
+              "javascript":   "javascript",
+              "normal":       "normalW25",
+              "power":        "powerW25",
+              "speed":        "speedW25",
+              "time 15":      "T15",
+              "time 30":      "T30",
+              "time 60":      "T60",
+            }
+
+            const name = await read({ prompt: "Preset name: ", silent: false })
+            const presetType = await read({ prompt: `Preset type [${PRESET_TYPES.join("/")}]: `, silent: false })
+
+            if (!(PRESET_TYPES as readonly string[]).includes(presetType)) {
+              logger.error(`Invalid preset type "${presetType}". Valid types: ${PRESET_TYPES.join(", ")}`)
+              return
+            }
+
+            const postOptions = state.config.createRequestOptions("POST")
+            let config: PresetConfig
+            let settingGroups: unknown
+
+            if (presetType === "custom") {
+              logger.log(`Paste your JSON payload, then press Enter on an empty line:`)
+              if (process.stdin.isTTY) process.stdin.setRawMode(false)
+              const raw = await new Promise<string>((resolve) => {
+                const rl = createInterface({ input: process.stdin, output: process.stdout })
+                const lines: string[] = []
+                rl.on("line", (line) => {
+                  if (line === "" && lines.length > 0) {
+                    rl.close()
+                    resolve(lines.join("\n"))
+                  } else {
+                    lines.push(line)
+                  }
+                })
+              })
+              let payload: { config?: PresetConfig; settingGroups?: unknown }
+              try {
+                payload = JSON.parse(raw)
+              } catch {
+                logger.error(`Invalid JSON payload.`)
+                return
+              }
+              config = payload.config ?? {}
+              settingGroups = payload.settingGroups
+            } else {
+              const tagName = await read({ prompt: "Tag name: ", silent: false })
+
+              const templatePreset = PRESET_TEMPLATES.find(p => p.name === PRESET_TYPE_TO_NAME[presetType])
+              if (!templatePreset) {
+                logger.error(`Could not find a preset template for type "${presetType}".`)
+                return
+              }
+
+              const getOptions = state.config.createRequestOptions("GET")
+              const tagsResponse = await state.monkeytype.getTags(getOptions)
+              let tagId = tagsResponse.data.find(t => t.name === tagName)?._id
+              if (!tagId) {
+                const created = await state.monkeytype.postTag(tagName, postOptions)
+                tagId = created.data._id
+                await state.query.createTag(state, tagId, tagName, created.data as TagResponse)
+              }
+
+              config = { ...templatePreset.config, tags: [tagId] }
+              settingGroups = templatePreset.settingGroups
+            }
+
+            const result = await state.monkeytype.postPreset(name, config, settingGroups, postOptions)
+            await state.query.createPreset(state, result.data.presetId, name, {
+              _id: result.data.presetId,
+              name,
+              config,
+              settingGroups,
+            })
+            return `${result.message} (id: ${result.data.presetId})`
+          })
+        } catch (error) {
+          logger.error(`Unable to create preset: ${(error as Error)?.message}`)
+        }
+        return
       case "delete":
         try {
           return await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
@@ -22,7 +167,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<str
         }
         return
       default:
-        logger.error(`Unknown subcommand: ${subcommand}. Supported subcommands: delete`)
+        logger.error(`Unknown subcommand: ${subcommand}. Supported subcommands: create, delete`)
         return
     }
   }
@@ -126,8 +271,6 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
     if (printPresets) {
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
-
-      console.log(JSON.stringify(presets.data[presets.data.length - 1], null, 2))
 
       const goals = await state.query.getGoalsByUserId(state)
 

@@ -83,12 +83,13 @@ export function getCommands(): Commands {
     },
     "presets": {
       name: "presets",
-      usage: "presets [delete]",
+      usage: "presets [create|delete]",
       examples: [
         "presets",
+        "presets create",
         "presets delete",
       ],
-      description: "Get presets from your MonkeyType account, delete your presets from the DB",
+      description: "Get presets from your MonkeyType account, create or delete your presets from the DB",
       execute: commandPresets,
     },
     "profile": {

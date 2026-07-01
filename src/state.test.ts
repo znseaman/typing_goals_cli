@@ -90,6 +90,8 @@ export const State = vi.fn(
     monkeytype = {
       login: vi.fn(),
       getPresets: vi.fn(),
+      postPreset: vi.fn(),
+      postTag: vi.fn(),
       getTags: vi.fn(),
       getResults: vi.fn(),
       refreshToken: vi.fn(),
