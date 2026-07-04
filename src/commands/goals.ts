@@ -58,40 +58,36 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
       const [isVerbose] = args ?? []
       const verbose = isVerbose === "-v" ? true : false
 
-      try {
-        // list current goals
-        const goals = await state.query.getGoalsByUserId(state)
+      // list current goals
+      const goals = await state.query.getGoalsByUserId(state)
 
-        if (!goals?.length) {
-          logger.error(`No goals created yet. Type "goals create" to create a goal.`)
-          return
-        }
-
-        const allResults = await getAllResults(state)
-        const presets: Array<PresetObject> = await state.query.getPresets(state)
-        const tags = await state.query.getTags(state)
-        
-        if (!tags?.length) {
-          logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
-          return
-        }
-
-        if (!presets?.length) {
-          logger.error(`No presets for this user in the database. Type "presets" to fetch presets for this user.`)
-          return
-        }
-
-        const goalsObj = createGoalsObject(goals, tags, presets, (allResults as ResultResponse[]))
-
-        const streaks: Record<string, number> = {}
-        for (const goal of goals) {
-          streaks[goal.id] = await state.query.computeStreak(state, goal.id)
-        }
-
-        await printGoalsTable(goals, goalsObj, streaks, state, verbose)
-      } catch (error) {
-        logger.error(`An error occurred executing "goals" command: ${(error as Error)?.message}. Please try again.`);
+      if (!goals?.length) {
+        logger.error(`No goals created yet. Type "goals create" to create a goal.`)
+        return
       }
+
+      const allResults = await getAllResults(state)
+      const presets: Array<PresetObject> = await state.query.getPresets(state)
+      const tags = await state.query.getTags(state)
+      
+      if (!tags?.length) {
+        logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
+        return
+      }
+
+      if (!presets?.length) {
+        logger.error(`No presets for this user in the database. Type "presets" to fetch presets for this user.`)
+        return
+      }
+
+      const goalsObj = createGoalsObject(goals, tags, presets, (allResults as ResultResponse[]))
+
+      const streaks: Record<string, number> = {}
+      for (const goal of goals) {
+        streaks[goal.id] = await state.query.computeStreak(state, goal.id)
+      }
+
+      await printGoalsTable(goals, goalsObj, streaks, state, verbose)
       break;
   }
 }
