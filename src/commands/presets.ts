@@ -268,7 +268,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       }
     }
 
-    if (printPresets) {
+    if (printPresets && presets) {
       // sort names alphabetically
       presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
 
@@ -304,7 +304,7 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
       logger.table(objects)
     }
 
-    if (printTags) {
+  if (printTags && tags) {
       // sort names alphabetically
       tags.data.sort((a: TagResponse, b: TagResponse) => a.name.localeCompare(b.name))
 
