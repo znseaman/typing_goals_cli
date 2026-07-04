@@ -43,7 +43,7 @@ export function printResultsTable(
 
   const objects = []
   for (let result of results) {
-    const tags = result.tags.map((tagId) => tagsObj[tagId].name)
+    const tags = result.tags.map((tagId) => tagsObj[tagId]?.name)
     let object = {
       wpm: result.wpm,
       raw: result.rawWpm,
