@@ -31,7 +31,7 @@ export async function commandDoctor(state: State, args?: string[]): Promise<stri
     versionResult = await state.db.execute(sql.raw(`SELECT version()`))
     postgresVersionFromDB = (versionResult.rows[0]?.version as string)?.startsWith("PostgreSQL 18") ? "18" : (versionResult.rows[0]?.version as string) || "";
   } catch {
-    postgresError = `Failed to get the PostgreSQL version from the database using the "dbURL" field in the config set to "${state.config.get("dbURL")}". To set the "dbURL", run "config set dbURL <url>"`
+    postgresError = `To set the database url, run the following command: "config set dbURL <url>" and re-run the "doctor" command.`
   }
 
   const correctPostgreSQLVersion = postgresVersionFromDB === process.env.POSTGRES_DB_VERSION
