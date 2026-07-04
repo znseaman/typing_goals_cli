@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { goals, presets } from "../schema.js"
 import { PresetResponse } from "../../monkeytype.js"
+import { testConnection } from "../index.js"
 
 export type Preset = typeof presets.$inferSelect
 
@@ -23,17 +24,20 @@ export type PresetsQueries = {
 }
 
 export async function createPreset(state: State, id: string, name: string, fullDetails: PresetResponse) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(presets).values({fullDetails, id, name, userId}).returning()
   return result
 }
 
 export async function getPresetById(state: State, id: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const [result] = await state.db.select().from(presets).where(eq(presets.id, id))
   return result
 }
 
 export async function getPresets(state: State): Promise<Array<PresetObject>> {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
 
   return state.db.select({
@@ -46,11 +50,13 @@ export async function getPresets(state: State): Promise<Array<PresetObject>> {
 }
 
 export async function deletePresets(state: State) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   await state.db.delete(presets).where(eq(presets.userId, userId))
 }
 
 export async function editPresetById(state: State, id: string, toSet: {name?: string, fullDetails?: PresetResponse}) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.update(presets).set(toSet).where(and(eq(presets.id, id), eq(presets.userId, userId))).returning()
   return result

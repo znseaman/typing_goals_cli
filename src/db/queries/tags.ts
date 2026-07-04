@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { tags } from '../schema.js'
 import { TagResponse } from "../../monkeytype.js"
+import { testConnection } from "../index.js"
 
 export type Tag = typeof tags.$inferSelect
 
@@ -21,17 +22,20 @@ export type TagsQueries = {
 }
 
 export async function createTag(state: State, id: string, name: string, fullDetails: TagResponse) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(tags).values({fullDetails, id, name, userId}).returning()
   return result
 }
 
 export async function getTagById(state: State, id: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const [result] = await state.db.select().from(tags).where(eq(tags.id, id))
   return result
 }
 
 export async function getTagByName(state: State, name: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.select().from(tags).where(
     and(
@@ -43,6 +47,7 @@ export async function getTagByName(state: State, name: string) {
 }
 
 export async function getTags(state: State): Promise<Array<TagObject>> {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   
   return state.db.select({
@@ -53,11 +58,13 @@ export async function getTags(state: State): Promise<Array<TagObject>> {
 }
 
 export async function deleteTags(state: State) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   await state.db.delete(tags).where(eq(tags.userId, userId))
 }
 
 export async function editTagById(state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.update(tags).set(toSet).where(and(eq(tags.id, id), eq(tags.userId, userId))).returning()
   return result

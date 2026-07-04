@@ -3,6 +3,7 @@ import { and, asc, eq, gte, lt, sql } from "drizzle-orm"
 
 import { results } from '../schema.js'
 import { ResultResponse } from "../../monkeytype.js"
+import { testConnection } from "../index.js"
 
 export type Result = typeof results.$inferSelect
 
@@ -15,18 +16,21 @@ export type ResultsQueries = {
 }
 
 export async function createResult(state: State, id: string, fullDetails: ResultResponse) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.insert(results).values({fullDetails, id, userId}).returning()
   return result
 }
 
 export async function getResultById(state: State, id: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [result] = await state.db.select().from(results).where(and(eq(results.userId, userId), eq(results.id, id)))
   return result
 }
 
 export async function getResultsByUserIdAndAfterTimestamp(state: State, timestamp: number) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const result = await state.db.select({fullDetails: results.fullDetails}).from(results).where(and(
     eq(results.userId, userId),
@@ -39,6 +43,7 @@ export async function getResultsByUserIdAndAfterTimestamp(state: State, timestam
 }
 
 export async function getResultsByUserIdBetweenTimestamps(state: State, startTs: number, endTs: number): Promise<Array<ResultResponse>> {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const result = await state.db.select({fullDetails: results.fullDetails}).from(results).where(and(
     eq(results.userId, userId),
@@ -49,6 +54,7 @@ export async function getResultsByUserIdBetweenTimestamps(state: State, startTs:
 }
 
 export async function getEarliestResultTimestampForUser(state: State): Promise<number | undefined> {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
   const [oldest] = await state.db
     .select({fullDetails: results.fullDetails})

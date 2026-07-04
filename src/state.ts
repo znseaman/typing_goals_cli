@@ -4,7 +4,7 @@ import { Commands, getCommands } from "./command.js";
 import { MonkeyType, monkeytype, refreshToken } from "./monkeytype.js";
 import { config, CustomConf } from "./config.js";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { initializeDB } from "./db/index.js"
+import { initializeDB, testConnection } from "./db/index.js"
 import { Pool } from "pg";
 import 'dotenv/config'
 import goals, { GoalsQueries } from "./db/queries/goals.js"
@@ -110,6 +110,13 @@ export async function initializeState(): Promise<State> {
   }
 
   const db = await initializeDB(config)
+
+  try {
+    await testConnection(db)
+  } catch (error) {
+    process.stderr.write("\n")
+    logger.error(`Error initializing database: ${(error as Error).message}`)
+  }
 
   const commands: Commands = getCommands()
 

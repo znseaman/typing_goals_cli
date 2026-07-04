@@ -2,6 +2,7 @@ import type { State } from "../../state.js"
 import { eq } from "drizzle-orm"
 
 import { users } from "../schema.js"
+import { testConnection } from "../index.js"
 
 export type User = typeof users.$inferSelect
 
@@ -13,20 +14,24 @@ export type UsersQueries = {
 }
 
 export async function createUser(state: State, id: string, email: string, displayName: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const [result] = await state.db.insert(users).values({id, email, displayName}).returning()
   return result
 }
 
 export async function getUserById(state: State, id: string) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   const result = await state.db.select().from(users).where(eq(users.id, id))
   return result.length === 0 ? false : result[0]
 }
 
 export async function deleteUsers(state: State) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   await state.db.delete(users)
 }
 
 export async function getUsers(state: State) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
   return state.db.select().from(users)
 }
 
