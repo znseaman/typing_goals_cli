@@ -236,7 +236,7 @@ describe("commandPresets - create", () => {
       undefined
     )
     expect(createPresetSpy).toHaveBeenCalledOnce()
-    expect(output).toContain("Preset created")
+    expect(output).toContain("created successfully")
 
     postTagSpy.mockRestore()
     postPresetSpy.mockRestore()
@@ -281,7 +281,7 @@ describe("commandPresets - create", () => {
       undefined
     )
     expect(createPresetSpy).toHaveBeenCalledOnce()
-    expect(output).toContain("Preset created")
+    expect(output).toContain("created successfully")
 
     postTagSpy.mockRestore()
     createTagSpy.mockRestore()

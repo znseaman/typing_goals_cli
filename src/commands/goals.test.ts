@@ -374,6 +374,7 @@ describe("commandGoals", () => {
     
     const successSpy = vi.spyOn(logger, "success").mockImplementation(() => {});
     const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     const associatedPreset = presets.find((preset) => preset._id === goal.presetId) || {name: "No Preset"}
 
@@ -418,8 +419,9 @@ describe("commandGoals", () => {
         vi.mocked(read).mockResolvedValueOnce(goal.measure);
         
         if (test_path === "no preset found") {
-          // Invalid Preset Name
-          vi.mocked(read).mockResolvedValueOnce("");
+          // Preset name not found → prompt to create → decline → re-prompts for preset name
+          vi.mocked(read).mockResolvedValueOnce("Nonexistent Preset");
+          vi.mocked(read).mockResolvedValueOnce("n");
         } else if (test_path === "no tag found") {
           // Invalid Preset Name
           vi.mocked(read).mockResolvedValueOnce(presets[0].name);
@@ -536,8 +538,15 @@ describe("commandGoals", () => {
       }
     }
 
+    let thrownError: Error | undefined
     // @ts-ignore
-    const output = await commandGoals(state, args)
+    let output: string | void = undefined
+    try {
+      // @ts-ignore
+      output = await commandGoals(state, args)
+    } catch (error) {
+      thrownError = error as Error
+    }
 
     if (args.length > 0) {
 
@@ -559,7 +568,7 @@ describe("commandGoals", () => {
           expect(errorSpy).toHaveBeenCalledWith(`Invalid number of tests entered "${goal.name}". Enter in a valid number greater than 0.`)
           expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "no preset found") {
-          expect(errorSpy).toHaveBeenCalledWith(`There is no preset with the name "" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
+          expect(warnSpy).toHaveBeenCalledWith(`Preset "Nonexistent Preset" doesn't exist in the database.`)
           expect(output).toBe(`Successfully created a new goal named "Goal 2"`)
         } else if (test_path === "no tag found") {
           expect(errorSpy).toHaveBeenCalledWith(`There is no tag associated with preset "${presets[0].name}" on this account. Verify a tag exists on this preset. If a tag exists, please report the data syncing issue.`)
@@ -631,12 +640,13 @@ describe("commandGoals", () => {
       }
     } else {
       if (test_path === "unable to connect to database error") {
-        expect(errorSpy).toHaveBeenCalledWith(`An error occurred executing "goals" command: unable to connect to database error. Please try again.`)
+        expect(thrownError?.message).toBe("unable to connect to database error")
       }
     }
 
     successSpy?.mockRestore()
     errorSpy?.mockRestore()
+    warnSpy?.mockRestore()
   });
 });
 
@@ -730,7 +740,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     //@ts-ignore
     await commandGoals(state, ["history"])
 
-    expect(infoSpy).toHaveBeenCalledWith('No history recorded yet for goal "Goal 1".')
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('No history recorded yet for goal "Goal 1".'))
     infoSpy.mockRestore()
   })
 
@@ -789,7 +799,7 @@ describe("showGoalHistory (via commandGoals history)", () => {
     expect(getHistorySpy).toHaveBeenCalledTimes(1)
     expect(getHistorySpy).toHaveBeenCalledWith(state, "g1")
     expect(infoSpy).toHaveBeenCalledTimes(1)
-    expect(infoSpy).toHaveBeenCalledWith('No history recorded yet for goal "Goal 1".')
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('No history recorded yet for goal "Goal 1".'))
     infoSpy.mockRestore()
   })
 

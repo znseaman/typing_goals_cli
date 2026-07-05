@@ -59,6 +59,100 @@ export const PRESET_TEMPLATES: Array<Pick<PresetResponse, 'name' | 'config' | 's
   },
 ]
 
+const PRESET_TYPES = [
+  "accuracy", "adaptability", "consistency", "javascript", "normal",
+  "power", "speed", "time 15", "time 30", "time 60", "custom",
+] as const
+
+const PRESET_TYPE_TO_NAME: Record<string, string> = {
+  "accuracy":     "accuracyW25",
+  "adaptability": "adaptabilityW25",
+  "consistency":  "consistencyW25",
+  "javascript":   "javascript",
+  "normal":       "normalW25",
+  "power":        "powerW25",
+  "speed":        "speedW25",
+  "time 15":      "T15",
+  "time 30":      "T30",
+  "time 60":      "T60",
+}
+
+export async function createPresetFlow(
+  state: State,
+  presetName?: string,
+): Promise<{ _id: string; tagId: string; name: string } | void> {
+  const name = String(presetName ?? await read({ prompt: "Preset name: ", silent: false }))
+  const presetType = await read({ prompt: `Preset type [${PRESET_TYPES.join("/")}]: `, silent: false })
+
+  if (!(PRESET_TYPES as readonly string[]).includes(presetType)) {
+    logger.error(`Invalid preset type "${presetType}". Valid types: ${PRESET_TYPES.join(", ")}`)
+    return
+  }
+
+  const postOptions = state.config.createRequestOptions("POST")
+  let config: PresetConfig
+  let settingGroups: unknown
+  let tagId = ""
+
+  if (presetType === "custom") {
+    logger.log(`Paste your JSON payload, then press Enter on an empty line:`)
+    if (process.stdin.isTTY) process.stdin.setRawMode(false)
+    const raw = await new Promise<string>((resolve) => {
+      const rl = createInterface({ input: process.stdin, output: process.stdout })
+      const lines: string[] = []
+      rl.on("line", (line) => {
+        if (line === "" && lines.length > 0) {
+          rl.close()
+          resolve(lines.join("\n"))
+        } else {
+          lines.push(line)
+        }
+      })
+    })
+    let payload: { config?: PresetConfig; settingGroups?: unknown }
+    try {
+      payload = JSON.parse(raw)
+    } catch {
+      logger.error(`Invalid JSON payload.`)
+      return
+    }
+    config = payload.config ?? {}
+    settingGroups = payload.settingGroups
+  } else {
+    const tagName = await read({ prompt: "Tag name: ", silent: false })
+
+    const templatePreset = PRESET_TEMPLATES.find(p => p.name === PRESET_TYPE_TO_NAME[presetType])
+    if (!templatePreset) {
+      logger.error(`Could not find a preset template for type "${presetType}".`)
+      return
+    }
+
+    const getOptions = state.config.createRequestOptions("GET")
+    const tagsResponse = await state.monkeytype.getTags(getOptions)
+    const foundTagId = tagsResponse.data.find(t => t.name === tagName)?._id
+    if (!foundTagId) {
+      const created = await state.monkeytype.postTag(tagName, postOptions)
+      tagId = created.data._id
+      await state.query.createTag(state, tagId, tagName, created.data as TagResponse)
+    } else {
+      tagId = foundTagId
+    }
+
+    config = { ...templatePreset.config, tags: [tagId] }
+    settingGroups = templatePreset.settingGroups
+  }
+
+  const result = await state.monkeytype.postPreset(name, config, settingGroups, postOptions)
+  const presetId = String(result.data.presetId)
+  await state.query.createPreset(state, presetId, name, {
+    _id: presetId,
+    name,
+    config,
+    settingGroups,
+  })
+  return { _id: presetId, tagId, name }
+}
+
 export async function commandPresets(state: State, args?: string[]): Promise<string | void> {
   if (args && args.length) {
     const [subcommand] = args
@@ -66,89 +160,8 @@ export async function commandPresets(state: State, args?: string[]): Promise<str
       case "create":
         try {
           return await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
-            const PRESET_TYPES = [
-              "accuracy", "adaptability", "consistency", "javascript", "normal",
-              "power", "speed", "time 15", "time 30", "time 60", "custom",
-            ] as const
-            const PRESET_TYPE_TO_NAME: Record<string, string> = {
-              "accuracy":     "accuracyW25",
-              "adaptability": "adaptabilityW25",
-              "consistency":  "consistencyW25",
-              "javascript":   "javascript",
-              "normal":       "normalW25",
-              "power":        "powerW25",
-              "speed":        "speedW25",
-              "time 15":      "T15",
-              "time 30":      "T30",
-              "time 60":      "T60",
-            }
-
-            const name = await read({ prompt: "Preset name: ", silent: false })
-            const presetType = await read({ prompt: `Preset type [${PRESET_TYPES.join("/")}]: `, silent: false })
-
-            if (!(PRESET_TYPES as readonly string[]).includes(presetType)) {
-              logger.error(`Invalid preset type "${presetType}". Valid types: ${PRESET_TYPES.join(", ")}`)
-              return
-            }
-
-            const postOptions = state.config.createRequestOptions("POST")
-            let config: PresetConfig
-            let settingGroups: unknown
-
-            if (presetType === "custom") {
-              logger.log(`Paste your JSON payload, then press Enter on an empty line:`)
-              if (process.stdin.isTTY) process.stdin.setRawMode(false)
-              const raw = await new Promise<string>((resolve) => {
-                const rl = createInterface({ input: process.stdin, output: process.stdout })
-                const lines: string[] = []
-                rl.on("line", (line) => {
-                  if (line === "" && lines.length > 0) {
-                    rl.close()
-                    resolve(lines.join("\n"))
-                  } else {
-                    lines.push(line)
-                  }
-                })
-              })
-              let payload: { config?: PresetConfig; settingGroups?: unknown }
-              try {
-                payload = JSON.parse(raw)
-              } catch {
-                logger.error(`Invalid JSON payload.`)
-                return
-              }
-              config = payload.config ?? {}
-              settingGroups = payload.settingGroups
-            } else {
-              const tagName = await read({ prompt: "Tag name: ", silent: false })
-
-              const templatePreset = PRESET_TEMPLATES.find(p => p.name === PRESET_TYPE_TO_NAME[presetType])
-              if (!templatePreset) {
-                logger.error(`Could not find a preset template for type "${presetType}".`)
-                return
-              }
-
-              const getOptions = state.config.createRequestOptions("GET")
-              const tagsResponse = await state.monkeytype.getTags(getOptions)
-              let tagId = tagsResponse.data.find(t => t.name === tagName)?._id
-              if (!tagId) {
-                const created = await state.monkeytype.postTag(tagName, postOptions)
-                tagId = created.data._id
-                await state.query.createTag(state, tagId, tagName, created.data as TagResponse)
-              }
-
-              config = { ...templatePreset.config, tags: [tagId] }
-              settingGroups = templatePreset.settingGroups
-            }
-
-            const result = await state.monkeytype.postPreset(name, config, settingGroups, postOptions)
-            await state.query.createPreset(state, result.data.presetId, name, {
-              _id: result.data.presetId,
-              name,
-              config,
-              settingGroups,
-            })
-            return `${result.message} (id: ${result.data.presetId})`
+            const preset = await createPresetFlow(state)
+            if (preset) return `Preset "${preset.name}" created successfully (id: ${preset._id})`
           })
         } catch (error) {
           logger.error(`Unable to create preset: ${(error as Error)?.message}`)

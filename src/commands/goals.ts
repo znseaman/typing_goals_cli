@@ -10,6 +10,8 @@ import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStar
 import { boldText, logger } from "../ui/logger.js";
 import { stdout } from "node:process";
 import { printGoalsStatus } from "./profile.js";
+import { createPresetFlow } from "./presets.js";
+import { intervalToDuration } from "date-fns";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -69,7 +71,7 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
       const allResults = await getAllResults(state)
       const presets: Array<PresetObject> = await state.query.getPresets(state)
       const tags = await state.query.getTags(state)
-      
+
       if (!tags?.length) {
         logger.error(`No tags for this user in the database. Type "tags" to fetch tags for this user.`)
         return
@@ -218,8 +220,15 @@ async function create(state: State, args?: string[]): Promise<string | void> {
     }
 
     if (!presetId) {
-      logger.error(`There is no preset with the name "${presetName}" associated with this account. Run "presets" command to get your fresh presets from MonkeyType or enter another preset name.`)
-      presetName = ""
+      if (presetName == "") { continue }
+      logger.warn(`Preset "${presetName}" doesn't exist in the database.`)
+      const confirm = await read({ prompt: boldText(`Would you like to create it on MonkeyType? (y/n): `), default: "n" })
+      if (confirm.toLowerCase() !== "y") { presetName = ""; continue }
+      const newPreset = await createPresetFlow(state, presetName)
+      if (!newPreset) { presetName = ""; continue }
+      presetId = newPreset._id
+      tagId = newPreset.tagId
+      validatedPresetName = true
       continue
     }
     if (!tagId) {
@@ -435,7 +444,10 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
     const history = await state.query.getGoalsHistoryByGoalId(state, goal.id)
 
     if (!history.length) {
-      logger.info(`No history recorded yet for goal "${goal.name}".`)
+      const startOfTodayUTC = getStartOfTodayUTC()
+      const startOfTomorrow = startOfTodayUTC + Number(convertTimeToMilliseconds(24, "h"))
+      const timeLeft = intervalToDuration({ start: new Date(), end: startOfTomorrow })
+      logger.info(`No history recorded yet for goal "${goal.name}". If the goal was created today, wait ${timeLeft}...`)
       continue
     }
 
