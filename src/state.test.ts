@@ -55,7 +55,7 @@ export const State = vi.fn(
     commands = {
       goals: {
         name: "goals",
-        usage: "goals [-v|create|edit|delete] [<name>] [<type>] [<measure>] [<presetName>]",
+        usage: "goals [-v|create|edit|delete|wizard] [<name>] [<type>] [<measure>] [<presetName>]",
         examples: [
           "goals",
           "goals -v #verbose",
@@ -63,6 +63,7 @@ export const State = vi.fn(
           "goals create Normal count 2 normalW25",
           "goals edit",
           "goals delete",
+          "goals wizard",
         ],
         execute: vi.fn()
       },
@@ -318,6 +319,7 @@ describe("getFullCommandList", () => {
     expect(list).toContain("goals create");
     expect(list).toContain("goals edit");
     expect(list).toContain("goals delete");
+    expect(list).toContain("goals wizard");
   });
 
   test("should not include required argument placeholders as subcommands", () => {

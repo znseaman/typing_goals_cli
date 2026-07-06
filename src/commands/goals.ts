@@ -33,7 +33,7 @@ export const defaultGoalOptions = {
   timeframe: "daily",
   type: "count",
   measure: {
-    count: "2",
+    count: "1",
     time: "5m",
   }
 }
@@ -49,6 +49,8 @@ export async function commandGoals(state: State, args?: string[]): Promise<strin
       return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => editGoal(state, crudArgs as string[]))
     case "delete":
       return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => deleteGoal(state, crudArgs as string[]))
+    case "wizard":
+      return await removeReadline_runNonReadline_addReadline(state, `goals ${crudType}`, () => wizard(state))
     case "history":
       // allow for goals with spaces
       return await showGoalHistory(state, crudArgs.join(" "))
@@ -169,7 +171,7 @@ async function create(state: State, args?: string[]): Promise<string | void> {
   let def = defaultGoalOptions.type
   let validatedType = false
   while (!type || !validatedType) {
-    if (!type) type = await read({prompt: boldText(`Enter${editing ? " new " : " "}goal type (time, count): `), default: def});
+    type = await read({prompt: boldText(`Enter${editing ? " new " : " "}goal type (time, count): `), default: def});
 
     try {
       type = validateType(type)
@@ -251,6 +253,46 @@ async function create(state: State, args?: string[]): Promise<string | void> {
   const goal = await state.query.createGoal(state, name, type as "time" | "count", Number(measure), presetId, String(state.config.get("localId")), defaultGoalOptions.timeframe)
 
   return `Successfully created a new goal named "${goal.name}"`
+}
+
+async function wizard(state: State): Promise<string> {
+  const presets: Array<PresetObject> = await state.query.getPresets(state)
+
+  const candidates = presets
+    .filter((preset) => !preset.goalName && preset.tagId)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (candidates.length === 0) {
+    logger.info("No presets without an existing goal were found. Nothing to suggest.")
+    return "Wizard finished: no new goals were created."
+  }
+
+  const createdNames: string[] = []
+
+  for (const preset of candidates) {
+    const answer = await read({
+      prompt: boldText(`Preset "${preset.name}" has no goal yet. Create a goal named "${preset.name}" using this preset? (y/n): `),
+      default: "y",
+    })
+
+    if (answer.toLowerCase() !== "y") {
+      continue
+    }
+
+    const type = defaultGoalOptions.type
+    const measure = type === "time" ? defaultGoalOptions.measure.time : defaultGoalOptions.measure.count
+
+    const result = await create(state, [preset.name, type, measure, preset.name])
+    if (result) {
+      createdNames.push(preset.name)
+    }
+  }
+
+  if (createdNames.length === 0) {
+    return "Wizard finished: no new goals were created."
+  }
+
+  return `Wizard finished: created ${createdNames.length} new goal(s): ${createdNames.join(", ")}.`
 }
 
 async function editGoal(state: State, args?: string[]): Promise<string | void> {

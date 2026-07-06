@@ -91,7 +91,7 @@ function renderSuggestions(state: State): void {
 
   stdout.write("\x1b7")
 
-  const MAX_SUGGESTIONS = 5
+  const MAX_SUGGESTIONS = 10
   // Skip suggestions[0] — it's already shown as ghost text inline.
   const parts = suggestions.slice(1, MAX_SUGGESTIONS + 1).map((s, i) =>
     (i + 1) === selectedIndex ? `\x1b[7m ${s} \x1b[0m` : `\x1b[2m ${s} \x1b[0m`

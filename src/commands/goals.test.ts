@@ -846,3 +846,103 @@ describe("commandGoals backfill", () => {
     expect(runForceBackfill).toHaveBeenCalledWith(state);
   });
 });
+
+describe("commandGoals wizard", () => {
+  beforeEach(() => {
+    vi.mocked(read).mockReset()
+  })
+
+  test("reports nothing to suggest when all presets already have goals", async () => {
+    const state = new State()
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+    vi.spyOn(state.query, "getPresets").mockResolvedValue([
+      { _id: "presetId1", name: "Preset 1", tagId: "tagId1", config: "{}", goalName: "Goal 1" },
+    ])
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["wizard"])
+
+    expect(read).not.toHaveBeenCalled()
+    expect(infoSpy).toHaveBeenCalledWith("No presets without an existing goal were found. Nothing to suggest.")
+    expect(result).toBe("Wizard finished: no new goals were created.")
+    infoSpy.mockRestore()
+  })
+
+  test("excludes presets without an associated tag from suggestions", async () => {
+    const state = new State()
+    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+    vi.spyOn(state.query, "getPresets").mockResolvedValue([
+      { _id: "presetId1", name: "Preset 1", tagId: "", config: "{}", goalName: "" },
+    ])
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["wizard"])
+
+    expect(read).not.toHaveBeenCalled()
+    expect(result).toBe("Wizard finished: no new goals were created.")
+    infoSpy.mockRestore()
+  })
+
+  test("creates a goal for a confirmed preset using default type/measure", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getPresets").mockResolvedValue([
+      { _id: "presetId1", name: "accuracyW25", tagId: "tagId1", config: "{}", goalName: "" },
+    ])
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getGoalByName").mockResolvedValue(false)
+    const createGoalSpy = vi.spyOn(state.query, "createGoal").mockResolvedValue({ name: "accuracyW25" })
+
+    vi.mocked(read).mockResolvedValueOnce("y") // confirm
+    vi.mocked(read).mockResolvedValueOnce("count") // goal type prompt
+    vi.mocked(read).mockResolvedValueOnce("2") // measure prompt
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["wizard"])
+
+    expect(vi.mocked(read).mock.calls[0][0]).toMatchObject({ default: "y" })
+    expect(createGoalSpy).toHaveBeenCalledWith(state, "accuracyW25", "count", 2, "presetId1", String(state.config.get("localId")), "daily")
+    expect(result).toBe(`Wizard finished: created 1 new goal(s): accuracyW25.`)
+  })
+
+  test("skips a suggested preset when the user declines", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getPresets").mockResolvedValue([
+      { _id: "presetId1", name: "accuracyW25", tagId: "tagId1", config: "{}", goalName: "" },
+    ])
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    const createGoalSpy = vi.spyOn(state.query, "createGoal")
+
+    vi.mocked(read).mockResolvedValueOnce("n")
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["wizard"])
+
+    expect(createGoalSpy).not.toHaveBeenCalled()
+    expect(result).toBe("Wizard finished: no new goals were created.")
+  })
+
+  test("prompts multiple candidates alphabetically and only creates confirmed goals", async () => {
+    const state = new State()
+    vi.spyOn(state.query, "getPresets").mockResolvedValue([
+      { _id: "presetId2", name: "zebraW25", tagId: "tagId2", config: "{}", goalName: "" },
+      { _id: "presetId1", name: "accuracyW25", tagId: "tagId1", config: "{}", goalName: "" },
+    ])
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    vi.spyOn(state.query, "getGoalByName").mockResolvedValue(false)
+    const createGoalSpy = vi.spyOn(state.query, "createGoal").mockResolvedValue({ name: "accuracyW25" })
+
+    vi.mocked(read).mockResolvedValueOnce("y") // confirm accuracyW25 (alphabetically first)
+    vi.mocked(read).mockResolvedValueOnce("count") // goal type prompt for accuracyW25
+    vi.mocked(read).mockResolvedValueOnce("2") // measure prompt for accuracyW25
+    vi.mocked(read).mockResolvedValueOnce("n") // confirm zebraW25
+
+    // @ts-ignore
+    const result = await commandGoals(state, ["wizard"])
+
+    expect(vi.mocked(read).mock.calls[0][0]).toMatchObject({ prompt: expect.stringContaining("accuracyW25") })
+    expect(vi.mocked(read).mock.calls[3][0]).toMatchObject({ prompt: expect.stringContaining("zebraW25") })
+    expect(createGoalSpy).toHaveBeenCalledTimes(1)
+    expect(createGoalSpy).toHaveBeenCalledWith(state, "accuracyW25", "count", 2, "presetId1", String(state.config.get("localId")), "daily")
+    expect(result).toBe(`Wizard finished: created 1 new goal(s): accuracyW25.`)
+  })
+});

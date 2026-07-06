@@ -12,7 +12,7 @@ describe("commandHelp", () => {
     // @ts-ignore
     await commandHelp(state);
 
-    expect(logSpy).toHaveBeenCalledTimes(25);
+    expect(logSpy).toHaveBeenCalledTimes(26);
 
     logSpy.mockRestore();
   });
