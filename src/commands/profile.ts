@@ -2,6 +2,7 @@ import { type State } from "../state.js"
 import { ProfileResponse, StreakResponse } from "../monkeytype.js"
 import { logger } from "../ui/logger.js"
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, formatDuration, getStartOfTodayUTC, getTimeUntilTomorrowUTC, isStreakClaimedToday } from "../time.js"
+import { computeGoalProgress, isGoalMet } from "../db/queries/goals.js"
 
 export async function commandProfile(state: State, args?: string[]): Promise<string | void> {
   const requestOptions = state.config.createRequestOptions("GET")
@@ -22,14 +23,7 @@ export async function printGoalsStatus(state: State): Promise<void> {
   let metCount = 0
   for (const goal of goals) {
     const matching = todayResults.filter(r => r.tags[0] === goal.tagId)
-    let met: boolean
-    if (goal.type === "count") {
-      met = matching.length >= goal.measure
-    } else {
-      const totalMs = matching.reduce((sum, r) => sum + r.testDuration * 1000 + (r.incompleteTestSeconds || 0) * 1000, 0)
-      met = totalMs >= goal.measure
-    }
-    if (met) metCount++
+    if (isGoalMet(goal, computeGoalProgress(matching))) metCount++
   }
 
   const allMet = metCount === goals.length

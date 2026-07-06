@@ -1,5 +1,5 @@
 import type { State } from "./state.js"
-import type { GoalWithPresetAndTag } from "./db/queries/goals.js"
+import { computeGoalProgress, isGoalMet, type GoalWithPresetAndTag } from "./db/queries/goals.js"
 import type { GoalsHistoryInsert } from "./db/queries/goalsHistory.js"
 import type { ResultResponse } from "./monkeytype.js"
 
@@ -20,21 +20,9 @@ function summarizeDayForGoal(
   const tagId = goal.tagId as string
   const matchingResults = dayResults.filter(r => r.tags[0] === tagId)
 
-  let totalMeasure: number
-  let met: boolean
-
-  if (goal.type === "count") {
-    totalMeasure = matchingResults.length
-    met = totalMeasure >= goal.measure
-  } else {
-    let totalMs = 0
-    for (const r of matchingResults) {
-      totalMs += r.testDuration * 1000
-      if (r.incompleteTestSeconds) totalMs += r.incompleteTestSeconds * 1000
-    }
-    totalMeasure = totalMs
-    met = totalMs >= goal.measure
-  }
+  const progress = computeGoalProgress(matchingResults)
+  const totalMeasure = goal.type === "count" ? progress.count : progress.totalMs
+  const met = isGoalMet(goal, progress)
 
   const wpms = matchingResults.map(r => r.wpm)
   const minWpm = wpms.length > 0 ? Math.min(...wpms) : null

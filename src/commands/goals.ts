@@ -5,12 +5,13 @@ import { runForceBackfill } from "../goalsSummarizer.js";
 import { getFieldsFromConfig, PersonalBests, PresetConfig, ResultResponse } from "../monkeytype.js";
 import { PresetObject } from "../db/queries/presets.js";
 import { TagObject } from "../db/queries/tags.js";
-import { GoalWithPresetAndTag } from "../db/queries/goals.js";
+import { GoalWithPresetAndTag, isGoalMet } from "../db/queries/goals.js";
 import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, getTimeUntilTomorrowUTC, validTimeDurations } from "../time.js";
 import { boldText, logger } from "../ui/logger.js";
 import { stdout } from "node:process";
 import { printGoalsStatus } from "./profile.js";
 import { createPresetFlow } from "./presets.js";
+import { confirm } from "../ui/prompt.js";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -223,8 +224,7 @@ async function create(state: State, args?: string[]): Promise<string | void> {
     if (!presetId) {
       if (presetName == "") { continue }
       logger.warn(`Preset "${presetName}" doesn't exist in the database.`)
-      const confirm = await read({ prompt: boldText(`Would you like to create it on MonkeyType? (y/n): `), default: "n" })
-      if (confirm.toLowerCase() !== "y") { presetName = ""; continue }
+      if (!(await confirm(`Would you like to create it on MonkeyType? (y/n): `))) { presetName = ""; continue }
       const newPreset = await createPresetFlow(state, presetName)
       if (!newPreset) { presetName = ""; continue }
       presetId = newPreset._id
@@ -269,12 +269,7 @@ async function wizard(state: State): Promise<string> {
   const createdNames: string[] = []
 
   for (const preset of candidates) {
-    const answer = await read({
-      prompt: boldText(`Preset "${preset.name}" has no goal yet. Create a goal named "${preset.name}" using this preset? (y/n): `),
-      default: "y",
-    })
-
-    if (answer.toLowerCase() !== "y") {
+    if (!(await confirm(`Preset "${preset.name}" has no goal yet. Create a goal named "${preset.name}" using this preset? (y/n): `, "y"))) {
       continue
     }
 
@@ -453,8 +448,7 @@ async function deleteGoal(state: State, args?: string[]): Promise<string | void>
   }
 
   // Ask to confirm whether they would like to delete the goal
-  let confirm = await read({prompt: boldText(`Confirm to delete the "${name}" goal (y/n): `), default: "n"});
-  if (confirm.toLowerCase() !== "y") {
+  if (!(await confirm(`Confirm to delete the "${name}" goal (y/n): `))) {
     stdout.write("\x1b[1A\r\x1b[2K")
     return
   }
@@ -533,17 +527,13 @@ export async function printGoalsTable(
   for (let goal of goals) {
     const goalObject = goalsObj[goal.tagId as string]
 
-    let toGo
-    let status
-    if (goal.type === "count") {
-      status = goalObject?.count >= goal.measure
-      toGo = status ? 0 : goal.measure - (goalObject?.count || 0)
-    } else {
-      const totalMilliseconds = (goalObject?.totalSeconds || 0) * 1000
-      status = totalMilliseconds >= goal.measure
-      toGo = status ? 0 : convertMillisecondsToSimplifiedTime(goal.measure - totalMilliseconds)
-    }
-    
+    const progress = { count: goalObject?.count || 0, totalMs: (goalObject?.totalSeconds || 0) * 1000 }
+    const status = isGoalMet(goal, progress)
+    const toGo = status ? 0 : goal.type === "count"
+      ? goal.measure - progress.count
+      : convertMillisecondsToSimplifiedTime(goal.measure - progress.totalMs)
+
+
     let object = {}
 
     if (verbose) {

@@ -3,10 +3,22 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { goals, presets } from "../schema.js"
 import { testConnection } from "../index.js"
+import type { ResultResponse } from "../../monkeytype.js"
 
 export type Goal = typeof goals.$inferSelect
 
 export type GoalWithPresetAndTag = { id: string; name: string; type: "time" | "count", measure: number, presetId: string; presetName: string | null; tagId: string | null; timeframe: string;}
+
+export function computeGoalProgress(results: ResultResponse[]): { count: number; totalMs: number } {
+  return {
+    count: results.length,
+    totalMs: results.reduce((sum, r) => sum + r.testDuration * 1000 + (r.incompleteTestSeconds || 0) * 1000, 0),
+  }
+}
+
+export function isGoalMet(goal: { type: "time" | "count"; measure: number }, progress: { count: number; totalMs: number }): boolean {
+  return goal.type === "count" ? progress.count >= goal.measure : progress.totalMs >= goal.measure
+}
 
 export type GoalsQueries = {
   getGoalsByUserId: (state: State) => Promise<Array<GoalWithPresetAndTag>>,

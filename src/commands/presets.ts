@@ -3,6 +3,7 @@ import { removeReadline_runNonReadline_addReadline, type State } from "../state.
 import { emojiForPresetConfigOption, getFieldsFromConfig, presetResponseSchema, PresetConfig, PresetResponse, PresetsResponse, TagResponse, TagsResponse } from "../monkeytype.js"
 import { read } from "read"
 import { logger } from "../ui/logger.js"
+import { confirm } from "../ui/prompt.js"
 
 export const bannedPresetOptions = ["accountChart", "customBackgroundFilter", "customLayoutfluid", "customPolyglot", "customThemeColors", "funbox", "liveAccStyle", "liveBurstStyle", "quickRestart", "quoteLength", "timerStyle", "burstHeatmap", "singleListCommandLine", "playSoundOnError", "fontSize", "favThemes", "theme", "tags", "punctuation", "numbers", "mode", "quickEnd", "alwaysShowWordsHistory", "repeatQuotes", "stopOnError", "strictSpace", "indicateTypos", "compositionDisplay", "hideExtraLetters", "resultSaving", "lazyMode", "layout", "freedomMode", "codeUnindentOnBackspace", "britishEnglish", "minBurst"]
 
@@ -81,7 +82,15 @@ export async function createPresetFlow(
   state: State,
   presetName?: string,
 ): Promise<{ _id: string; tagId: string; name: string } | void> {
-  const name = String(presetName ?? await read({ prompt: "Preset name: ", silent: false }))
+  let name = String(presetName ?? "")
+  
+  while (!name) {
+    if (!name) name = await read({ prompt: "Preset name: ", silent: false })
+    if (name === "") {
+      continue
+    }
+  }
+  
   const presetType = await read({ prompt: `Preset type [${PRESET_TYPES.join("/")}]: `, silent: false })
 
   if (!(PRESET_TYPES as readonly string[]).includes(presetType)) {
@@ -170,8 +179,7 @@ export async function commandPresets(state: State, args?: string[]): Promise<str
       case "delete":
         try {
           return await removeReadline_runNonReadline_addReadline(state, `presets ${subcommand}`, async () => {
-            const confirm = await read({prompt: "Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): ", default: "n", silent: false});
-            if (confirm.toLowerCase() !== "y") return
+            if (!(await confirm("Deleting your presets will also delete your goals from the database. Confirm to delete your presets and goals (y/n): "))) return
             await state.query.deletePresets(state)
             return `Successfully deleted all your presets and goals from the database!`
           })
