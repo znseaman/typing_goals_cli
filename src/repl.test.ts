@@ -3,6 +3,10 @@ import { startREPL } from "./repl.js";
 import { State } from "./state.test.js";
 import { RefreshTokenResponse } from "./monkeytype.js";
 
+vi.mock("node-cron", () => ({
+  default: { schedule: vi.fn() },
+}));
+
 describe("startREPL", () => {
   test("should print welcome message", async() => {
     const state = new State();
@@ -42,8 +46,8 @@ describe("startREPL", () => {
     // @ts-ignore
     await startREPL(state);
 
-    expect(isTokenValid).toHaveBeenCalledTimes(1);
-    expect(getConfig).toHaveBeenCalledTimes(4);
+    expect(isTokenValid).toHaveBeenCalledTimes(2);
+    expect(getConfig).toHaveBeenCalledTimes(2);
     expect(setConfig).toHaveBeenCalledTimes(1);
     expect(promptSpy).toHaveBeenCalledTimes(1);
 
@@ -51,6 +55,29 @@ describe("startREPL", () => {
     getConfig.mockRestore();
     refreshToken.mockRestore();
     setConfig.mockRestore();
+    promptSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+
+  test("should show welcome back when token is already valid at startup", async() => {
+    const state = new State();
+    const isTokenValid = vi.spyOn(state.config, "isTokenValid").mockReturnValue(true);
+    const getConfig = vi.spyOn(state.config, "get")
+    const promptSpy = vi.spyOn(state.readline, "prompt");
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    getConfig.mockReturnValueOnce("Bob")   // displayName
+    getConfig.mockReturnValueOnce(false)   // maintainStreak
+
+    // @ts-ignore
+    await startREPL(state);
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("Welcome back, Bob"));
+    expect(getConfig).toHaveBeenCalledWith("maintainStreak");
+    expect(promptSpy).toHaveBeenCalledTimes(1);
+
+    isTokenValid.mockRestore();
+    getConfig.mockRestore();
     promptSpy.mockRestore();
     logSpy.mockRestore();
   });
