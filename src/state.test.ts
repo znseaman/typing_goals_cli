@@ -205,7 +205,7 @@ describe("initializeReadlineHandlers", () => {
     isTokenValid.mockRestore()
   });
 
-  test("should prompt user to login b/c invalid token and no refresh token - results command", async () => {
+  test("should invoke login flow when token is invalid and no refresh token stored - results command", async () => {
     const state = new State()
 
     const callbacks: { [event: string]: Function } = {};
@@ -216,14 +216,16 @@ describe("initializeReadlineHandlers", () => {
     }
 
     const exitCommand = vi.spyOn(state.commands.exit, "execute").mockImplementationOnce(() => {})
+    const loginCommand = vi.spyOn(state.commands.login, "execute").mockResolvedValue(undefined)
+    const resultsCommand = vi.spyOn(state.commands.results, "execute")
 
     const commandHistoryPush = vi.spyOn(state.commandHistory, "push")
     const promptSpy = vi.spyOn(state.readline, "prompt")
 
-    const isTokenValid = vi.spyOn(state.config, "isTokenValid").mockReturnValueOnce(false)
-    const getConfig = vi.spyOn(state.config, "get").mockReturnValueOnce(false)
-
-    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
+    const isTokenValid = vi.spyOn(state.config, "isTokenValid").mockReturnValue(false)
+    const getConfig = vi.spyOn(state.config, "get")
+    getConfig.mockReturnValueOnce("Bob")   // displayName
+    getConfig.mockReturnValueOnce(false)   // refreshToken (none stored)
 
     // @ts-ignore
     initializeReadlineHandlers(state);
@@ -234,16 +236,21 @@ describe("initializeReadlineHandlers", () => {
 
     expect(commandHistoryPush).toHaveBeenCalledTimes(1)
     expect(isTokenValid).toHaveBeenCalledTimes(1)
-    expect(getConfig).toHaveBeenCalledTimes(1)
-    expect(infoSpy).toHaveBeenNthCalledWith(1, `Type "login" to reconnect.`)
+    expect(getConfig).toHaveBeenCalledTimes(2)
+    expect(loginCommand).toHaveBeenCalledTimes(1)
+    expect(resultsCommand).not.toHaveBeenCalled()
+    expect(promptSpy).toHaveBeenCalledTimes(1)
 
     exitCommand.mockRestore()
+    loginCommand.mockRestore()
+    resultsCommand.mockRestore()
     promptSpy.mockRestore()
     commandHistoryPush.mockRestore()
     isTokenValid.mockRestore()
+    getConfig.mockRestore()
   });
 
-  test("should set config when token is invalid and refresh token creates new token - results command", async () => {
+  test("should refresh token and execute the command when refresh succeeds - results command", async () => {
     const state = new State()
 
     const callbacks: { [event: string]: Function } = {};
@@ -254,14 +261,16 @@ describe("initializeReadlineHandlers", () => {
     }
 
     const exitCommand = vi.spyOn(state.commands.exit, "execute").mockImplementationOnce(() => {})
-
     const resultsCommand = vi.spyOn(state.commands.results, "execute").mockImplementationOnce(() => {})
+    const loginCommand = vi.spyOn(state.commands.login, "execute")
 
     const commandHistoryPush = vi.spyOn(state.commandHistory, "push")
     const promptSpy = vi.spyOn(state.readline, "prompt")
 
     const isTokenValid = vi.spyOn(state.config, "isTokenValid").mockReturnValueOnce(false)
-    const getConfig = vi.spyOn(state.config, "get").mockReturnValueOnce(true)
+    const getConfig = vi.spyOn(state.config, "get")
+    getConfig.mockReturnValueOnce("Bob")          // displayName
+    getConfig.mockReturnValueOnce("xxxxxxxxxx")   // refreshToken
     const refreshToken = vi.spyOn(state.monkeytype, "refreshToken").mockResolvedValueOnce({
       access_token: "string",
       expires_in: "string",
@@ -273,8 +282,6 @@ describe("initializeReadlineHandlers", () => {
     } as RefreshTokenResponse)
     const setConfig = vi.spyOn(state.config, "setConfig").mockImplementation(() => {})
 
-    const infoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
-
     // @ts-ignore
     initializeReadlineHandlers(state);
 
@@ -284,15 +291,18 @@ describe("initializeReadlineHandlers", () => {
 
     expect(commandHistoryPush).toHaveBeenCalledTimes(1)
     expect(isTokenValid).toHaveBeenCalledTimes(1)
-    expect(getConfig).toHaveBeenCalledTimes(1)
-    expect(infoSpy).toHaveBeenNthCalledWith(1, `Type "login" to reconnect.`)
+    expect(getConfig).toHaveBeenCalledTimes(2)
+    expect(setConfig).toHaveBeenCalledTimes(1)
+    expect(loginCommand).not.toHaveBeenCalled()
+    expect(resultsCommand).toHaveBeenCalledTimes(1)
+    expect(promptSpy).toHaveBeenCalledTimes(1)
 
     getConfig.mockRestore()
     refreshToken.mockRestore()
     setConfig.mockRestore()
-    infoSpy.mockRestore()
     exitCommand.mockRestore()
     resultsCommand.mockRestore()
+    loginCommand.mockRestore()
     promptSpy.mockRestore()
     commandHistoryPush.mockRestore()
     isTokenValid.mockRestore()

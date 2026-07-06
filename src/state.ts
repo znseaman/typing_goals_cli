@@ -14,6 +14,7 @@ import results, { ResultsQueries } from "./db/queries/results.js";
 import presets, { PresetsQueries } from "./db/queries/presets.js";
 import users, { UsersQueries } from "./db/queries/users.js";
 import goalsHistory, { GoalsHistoryQueries } from "./db/queries/goalsHistory.js";
+import { ensureAuthenticated } from "./auth.js";
 
 export type CLICommand = {
   name: string;
@@ -282,31 +283,11 @@ export function initializeReadlineHandlers(state: State): void {
 
     const allowCommandWithoutLogin = commandName !== "login" && commandName !== "config" && commandName !== "doctor" && commandName !== "help" && commandName !== "exit" && commandName !== "db" && (commandName in state.commands)
     if (allowCommandWithoutLogin) {
-      // Bypass if under expires in
-      if (!state.config.isTokenValid()) {
-        // Try to refresh their token using refresh token
-        const token = String(state.config.get("refreshToken") || "")
-        if (!token) {
-          logger.info(`Type "login" to reconnect.`)
-          showPrompt(state)
-          return
-        }
-
-        try {
-          const response = await state.monkeytype.refreshToken(token)
-
-          const data = {
-            "idToken": response.id_token,
-            "expiresIn": response.expires_in,
-            "refreshToken": response.refresh_token,
-          }
-
-          state.config.setConfig(data)
-        } catch {
-          logger.info(`Type "login" to reconnect.`)
-          showPrompt(state)
-          return
-        }
+      const displayName = state.config.get("displayName")
+      const wasPrompted = await ensureAuthenticated(state, displayName)
+      if (wasPrompted) {
+        showPrompt(state)
+        return
       }
     }
 
