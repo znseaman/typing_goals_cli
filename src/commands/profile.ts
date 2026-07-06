@@ -1,8 +1,7 @@
 import { type State } from "../state.js"
 import { ProfileResponse, StreakResponse } from "../monkeytype.js"
 import { logger } from "../ui/logger.js"
-import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC } from "../time.js"
-import { formatDuration, intervalToDuration, isAfter } from "date-fns"
+import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, formatDuration, getStartOfTodayUTC, getTimeUntilTomorrowUTC, isStreakClaimedToday } from "../time.js"
 
 export async function commandProfile(state: State, args?: string[]): Promise<string | void> {
   const requestOptions = state.config.createRequestOptions("GET")
@@ -43,16 +42,14 @@ export function printStreak(streakResponse: StreakResponse | {}) {
   let startOfTodayUTC = getStartOfTodayUTC()
   const hourOffset = streakResponse?.data?.hourOffset || 0
   const offsetMs = Number(convertTimeToMilliseconds(hourOffset, "h"))
-  let streakClaimedToday = isAfter(lastResultTimestamp + offsetMs, startOfTodayUTC + offsetMs)
+  let streakClaimedToday = isStreakClaimedToday(lastResultTimestamp, startOfTodayUTC, offsetMs)
 
   logger[streakClaimedToday ? "success" : "error"](`${streakClaimedToday ? "S" : "No s"}treak claimed today!`)
-  const startOfTomorrow = startOfTodayUTC + offsetMs + Number(convertTimeToMilliseconds(24, "h"))
+  const timeUntilTomorrow = getTimeUntilTomorrowUTC(startOfTodayUTC, offsetMs)
   if (!streakClaimedToday) {
-    const timeLeft = intervalToDuration({ start: new Date(), end: startOfTomorrow })
-    logger.info(`Time left to claim streak ⏳: ${formatDuration(timeLeft)}...`)
+    logger.info(`Time left to claim streak ⏳: ${formatDuration(timeUntilTomorrow)}...`)
   } else {
-    const timeUntilNext = intervalToDuration({ start: new Date(), end: startOfTomorrow })
-    logger.info(`Next streak available in ${formatDuration(timeUntilNext)}... ⏲️`)
+    logger.info(`Next streak available in ${formatDuration(timeUntilTomorrow)}... ⏲️`)
   }
 }
 

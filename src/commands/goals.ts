@@ -6,12 +6,11 @@ import { getFieldsFromConfig, PersonalBests, PresetConfig, ResultResponse } from
 import { PresetObject } from "../db/queries/presets.js";
 import { TagObject } from "../db/queries/tags.js";
 import { GoalWithPresetAndTag } from "../db/queries/goals.js";
-import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, validTimeDurations } from "../time.js";
+import { convertMillisecondsToSimplifiedTime, convertTimeToMilliseconds, getStartOfTodayUTC, getTimeUntilTomorrowUTC, validTimeDurations } from "../time.js";
 import { boldText, logger } from "../ui/logger.js";
 import { stdout } from "node:process";
 import { printGoalsStatus } from "./profile.js";
 import { createPresetFlow } from "./presets.js";
-import { intervalToDuration } from "date-fns";
 
 export type GoalsObject = Record<string, {
   count: number,
@@ -487,8 +486,7 @@ async function showGoalHistory(state: State, goalName?: string): Promise<void> {
 
     if (!history.length) {
       const startOfTodayUTC = getStartOfTodayUTC()
-      const startOfTomorrow = startOfTodayUTC + Number(convertTimeToMilliseconds(24, "h"))
-      const timeLeft = intervalToDuration({ start: new Date(), end: startOfTomorrow })
+      const timeLeft = getTimeUntilTomorrowUTC(startOfTodayUTC)
       logger.info(`No history recorded yet for goal "${goal.name}". If the goal was created today, wait ${timeLeft}...`)
       continue
     }

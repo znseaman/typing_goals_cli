@@ -1,9 +1,22 @@
-import { intervalToDuration, formatDuration, milliseconds } from 'date-fns';
+import { intervalToDuration, formatDuration as formatDurationFns, milliseconds, isAfter, type Duration } from 'date-fns';
 
 export const validTimeDurations = new Set(["ms", "s", "m", "h", "millisecond", "milliseconds", "second", "seconds", "minute", "minutes", "hour", "hours"])
 
 export function getStartOfTodayUTC() {
   return Number(new Date(new Date().toISOString().split("T")[0]))
+}
+
+export function getStartOfTomorrowUTC(startOfTodayUTC: number, offsetMs = 0): number {
+  return startOfTodayUTC + offsetMs + Number(convertTimeToMilliseconds(24, "h"))
+}
+
+export function getTimeUntilTomorrowUTC(startOfTodayUTC: number, offsetMs = 0) {
+  const startOfTomorrow = getStartOfTomorrowUTC(startOfTodayUTC, offsetMs)
+  return intervalToDuration({ start: new Date(), end: startOfTomorrow })
+}
+
+export function isStreakClaimedToday(lastResultTimestamp: number, startOfTodayUTC: number, offsetMs: number): boolean {
+  return isAfter(lastResultTimestamp + offsetMs, startOfTodayUTC + offsetMs)
 }
 
 export function convertTimeToMilliseconds(number: number, duration: string): string {
@@ -32,7 +45,11 @@ export function convertTimeToMilliseconds(number: number, duration: string): str
 export function convertMillisecondsToSimplifiedTime(number: number): string {
   const duration = intervalToDuration({ start: 0, end: number });
 
-  const readableDuration = formatDuration(duration);
+  const readableDuration = formatDurationFns(duration);
 
   return readableDuration
+}
+
+export function formatDuration(duration: Duration): string {
+  return formatDurationFns(duration)
 }
