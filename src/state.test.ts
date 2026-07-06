@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { initializeReadlineHandlers, initializeState, getFullCommandList } from "./state.js";
+import { initializeReadlineHandlers, initializeState } from "./state.js";
+import { getFullCommandList } from "./ui/autocomplete.js";
 import { logger } from "./ui/logger.js";
 import { RefreshTokenResponse } from "./monkeytype.js";
 
