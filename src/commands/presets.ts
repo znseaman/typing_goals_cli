@@ -200,7 +200,8 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
   const requestOptions = state.config.createRequestOptions("GET")
 
   const tags = await state.monkeytype.getTags(requestOptions)
-  
+  let deletedTags: Awaited<ReturnType<typeof state.query.deleteTagsNotIn>> = []
+
   if (tags) {
     // save tags to db
     for await (const tag of tags?.data) {
@@ -219,9 +220,17 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         console.debug(` db:createTag - ${saved.id} - ${saved.name}`)
       }
     }
+
+    const currentTagIds = tags.data.map((tag) => tag._id)
+    deletedTags = await state.query.deleteTagsNotIn(state, currentTagIds)
+    for (const deleted of deletedTags) {
+      console.debug(`db:deleteTagById - ${deleted.id} - ${deleted.name}`)
+    }
   }
 
   const presets = await state.monkeytype.getPresets(requestOptions)
+  let goals: Awaited<ReturnType<typeof state.query.getGoalsByUserId>> = []
+  let affectedGoals: typeof goals = []
 
   if (presets) {
     // save presets to db
@@ -268,13 +277,20 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
         console.debug(`db:createPreset - ${saved.id} - ${saved.name}`)
       }
     }
+
+    const currentPresetIds = presets.data.map((preset) => preset._id)
+    goals = await state.query.getGoalsByUserId(state)
+    affectedGoals = goals.filter((goal) => !currentPresetIds.includes(goal.presetId))
+
+    const deletedPresets = await state.query.deletePresetsNotIn(state, currentPresetIds)
+    for (const deleted of deletedPresets) {
+      console.debug(`db:deletePresetById - ${deleted.id} - ${deleted.name}`)
+    }
   }
 
   if (printPresets && presets) {
     // sort names alphabetically
     presets.data.sort((a: PresetResponse, b: PresetResponse) => a.name.localeCompare(b.name))
-
-    const goals = await state.query.getGoalsByUserId(state)
 
     const objects = []
     for (let preset of presets.data) {
@@ -304,6 +320,10 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
     logger.title(`\nYour Presets 🔧`)
     logger.table(objects)
+  }
+
+  if (affectedGoals.length > 0) {
+    logger.warn(`Deleting presets no longer on MonkeyType will also delete these goals: ${affectedGoals.map((goal) => goal.name).join(", ")}`)
   }
 
   if (printTags && tags) {
@@ -336,6 +356,16 @@ export async function savePresetsAndTags(state: State, printPresets: boolean, pr
 
     logger.title(`\nYour Tags 🏷️`)
     logger.table(objects)
+  }
+
+  if (deletedTags.length > 0) {
+    logger.warn(`Deleted these tags no longer on MonkeyType: ${deletedTags.map((tag) => tag.name).join(", ")}`)
+  }
+
+  const deletedTagIds = deletedTags.map((tag) => tag.id)
+  const presetsWithDanglingTag = (presets?.data ?? []).filter((preset) => preset?.config?.tags?.some((tagId) => deletedTagIds.includes(tagId)))
+  if (presetsWithDanglingTag.length > 0) {
+    logger.warn(`These presets reference a tag that no longer exists on MonkeyType and should be re-saved: ${presetsWithDanglingTag.map((preset) => preset.name).join(", ")}`)
   }
 }
 

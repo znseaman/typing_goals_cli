@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { presets, users } from "../schema.js";
-import { createPreset, editPresetById, getPresetById, getPresets, deletePresets } from "./presets.js";
+import { createPreset, editPresetById, getPresetById, getPresets, deletePresets, deletePresetsNotIn } from "./presets.js";
 
 describe("Database Queries", () => {
   let db: ReturnType<typeof drizzle>;
@@ -65,6 +65,43 @@ describe("Database Queries", () => {
     // Query
     // @ts-ignore
     await deletePresets(state, "1");
+
+    // @ts-ignore
+    const result = await getPresets(state)
+
+    // Assert
+    expect(result.length).toBe(0);
+  });
+
+  it("should delete presets not in the given id list, keeping the rest", async () => {
+    // Seed
+    // @ts-ignore
+    await createPreset(state, "1", "Normal", {_id: "1", name: "Normal", config: {}, settingGroups: {}}, "1")
+    // @ts-ignore
+    await createPreset(state, "2", "Stale", {_id: "2", name: "Stale", config: {}, settingGroups: {}}, "1")
+
+    // Query
+    // @ts-ignore
+    const deleted = await deletePresetsNotIn(state, ["1"])
+
+    // @ts-ignore
+    const result = await getPresets(state)
+
+    // Assert
+    expect(deleted.length).toBe(1);
+    expect(deleted[0].id).toBe("2");
+    expect(result.length).toBe(1);
+    expect(result[0]._id).toBe("1");
+  });
+
+  it("should delete all presets for the user when given an empty id list", async () => {
+    // Seed
+    // @ts-ignore
+    await createPreset(state, "1", "Normal", {_id: "1", name: "Normal", config: {}, settingGroups: {}}, "1")
+
+    // Query
+    // @ts-ignore
+    await deletePresetsNotIn(state, [])
 
     // @ts-ignore
     const result = await getPresets(state)

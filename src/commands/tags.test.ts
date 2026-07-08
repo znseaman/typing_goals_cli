@@ -38,6 +38,8 @@ describe("commandTags", () => {
     let editPresetById
 
     let getGoalsByUserId
+    let deleteTagsNotIn
+    let deletePresetsNotIn
 
     if (args.length > 0) {
       if (args[0] === "delete") {
@@ -55,6 +57,8 @@ describe("commandTags", () => {
       editPresetById = vi.spyOn(state.query, "editPresetById").mockResolvedValue(false)
 
       getGoalsByUserId = vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals)
+      deleteTagsNotIn = vi.spyOn(state.query, "deleteTagsNotIn").mockResolvedValue([])
+      deletePresetsNotIn = vi.spyOn(state.query, "deletePresetsNotIn").mockResolvedValue([])
     }
     
     // @ts-ignore
@@ -84,6 +88,8 @@ describe("commandTags", () => {
     editPresetById?.mockRestore()
 
     getGoalsByUserId?.mockRestore()
+    deleteTagsNotIn?.mockRestore()
+    deletePresetsNotIn?.mockRestore()
 
     successSpy.mockRestore();
     errorSpy.mockRestore();
@@ -91,3 +97,64 @@ describe("commandTags", () => {
     logSpy.mockRestore();
   });
 });
+
+describe("commandTags - pruning stale presets/tags", () => {
+  test("prints the deleted-tags warning after the tags table", async () => {
+    const state = new State()
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({ data: tags1 })
+    vi.spyOn(state.query, "getTagById").mockResolvedValue(true)
+    vi.spyOn(state.query, "editTagById").mockResolvedValue({ id: tags1[0]._id, name: "Tag 1" })
+
+    vi.spyOn(state.monkeytype, "getPresets").mockResolvedValue({ data: presets1 })
+    vi.spyOn(state.query, "getPresetById").mockResolvedValue(true)
+    vi.spyOn(state.query, "editPresetById").mockResolvedValue(true)
+
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue(goals1)
+    vi.spyOn(state.query, "deleteTagsNotIn").mockResolvedValue([{ id: "oldTagId", name: "Old Tag" }])
+    vi.spyOn(state.query, "deletePresetsNotIn").mockResolvedValue([])
+
+    // @ts-ignore
+    await commandTags(state, [])
+
+    expect(tableSpy).toHaveBeenCalledOnce()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Old Tag"))
+    expect(tableSpy.mock.invocationCallOrder[0]).toBeLessThan(warnSpy.mock.invocationCallOrder[0])
+
+    tableSpy.mockRestore()
+    debugSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
+
+  test("warns about presets that still reference a tag that was just deleted", async () => {
+    const state = new State()
+    const tableSpy = vi.spyOn(logger, "table").mockImplementation(() => {})
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
+
+    vi.spyOn(state.monkeytype, "getTags").mockResolvedValue({ data: tags1 })
+    vi.spyOn(state.query, "getTagById").mockResolvedValue(true)
+    vi.spyOn(state.query, "editTagById").mockResolvedValue({ id: tags1[0]._id, name: "Tag 1" })
+
+    vi.spyOn(state.monkeytype, "getPresets").mockResolvedValue({ data: presets1 })
+    vi.spyOn(state.query, "getPresetById").mockResolvedValue(true)
+    vi.spyOn(state.query, "editPresetById").mockResolvedValue(true)
+
+    vi.spyOn(state.query, "getGoalsByUserId").mockResolvedValue([])
+    // "tagId1" is the tag presets1[0] references (config.tags: ["tagId1"]) - simulate it having just been pruned
+    vi.spyOn(state.query, "deleteTagsNotIn").mockResolvedValue([{ id: "tagId1", name: "Tag 1" }])
+    vi.spyOn(state.query, "deletePresetsNotIn").mockResolvedValue([])
+
+    // @ts-ignore
+    await commandTags(state, [])
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Preset 1"))
+
+    tableSpy.mockRestore()
+    debugSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
+})

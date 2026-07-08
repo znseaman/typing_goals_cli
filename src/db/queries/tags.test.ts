@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { PGlite } from "@electric-sql/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { tags, users } from "../schema.js";
-import { createTag, editTagById, getTagById, getTagByName, getTags, deleteTags } from "./tags.js";
+import { createTag, editTagById, getTagById, getTagByName, getTags, deleteTags, deleteTagsNotIn } from "./tags.js";
 
 describe("Database Queries", () => {
   let db: ReturnType<typeof drizzle>;
@@ -79,6 +79,43 @@ describe("Database Queries", () => {
     // Query
     // @ts-ignore
     await deleteTags(state);
+
+    // @ts-ignore
+    const result = await getTags(state)
+
+    // Assert
+    expect(result.length).toBe(0);
+  });
+
+  it("should delete tags not in the given id list, keeping the rest", async () => {
+    // Seed
+    // @ts-ignore
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
+    // @ts-ignore
+    await createTag(state, "2", "Stale", {_id: "2", name: "Stale", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
+
+    // Query
+    // @ts-ignore
+    const deleted = await deleteTagsNotIn(state, ["1"])
+
+    // @ts-ignore
+    const result = await getTags(state)
+
+    // Assert
+    expect(deleted.length).toBe(1);
+    expect(deleted[0].id).toBe("2");
+    expect(result.length).toBe(1);
+    expect(result[0]._id).toBe("1");
+  });
+
+  it("should delete all tags for the user when given an empty id list", async () => {
+    // Seed
+    // @ts-ignore
+    await createTag(state, "1", "Normal", {_id: "1", name: "Normal", personalBests: {words: {"25": []}, time: {}, custom: {}, quote: {}, zen:{}}})
+
+    // Query
+    // @ts-ignore
+    await deleteTagsNotIn(state, [])
 
     // @ts-ignore
     const result = await getTags(state)

@@ -1,5 +1,5 @@
 import type { State } from "../../state.js"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, notInArray, sql } from "drizzle-orm"
 
 import { goals, presets } from "../schema.js"
 import { PresetResponse } from "../../monkeytype.js"
@@ -19,6 +19,7 @@ export type PresetsQueries = {
   createPreset: (state: State, id: string, name: string, fullDetails: PresetResponse) => Promise<Preset>,
   editPresetById: (state: State, id: string, toSet: {name?: string, fullDetails?: PresetResponse}) => Promise<Preset>,
   deletePresets: (state: State) => Promise<void>,
+  deletePresetsNotIn: (state: State, ids: string[]) => Promise<Preset[]>,
   getPresetById: (state: State, id: string) => Promise<Preset>,
   getPresets: (state: State) => Promise<Array<PresetObject>>,
 }
@@ -55,6 +56,12 @@ export async function deletePresets(state: State) {
   await state.db.delete(presets).where(eq(presets.userId, userId))
 }
 
+export async function deletePresetsNotIn(state: State, ids: string[]) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
+  const userId = String(state.config.get("localId"))
+  return state.db.delete(presets).where(and(eq(presets.userId, userId), notInArray(presets.id, ids))).returning()
+}
+
 export async function editPresetById(state: State, id: string, toSet: {name?: string, fullDetails?: PresetResponse}) {
   if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
@@ -66,6 +73,7 @@ export default {
   createPreset,
   editPresetById,
   deletePresets,
+  deletePresetsNotIn,
   getPresetById,
   getPresets,
 } as PresetsQueries

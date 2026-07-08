@@ -1,5 +1,5 @@
 import type { State } from "../../state.js"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, notInArray, sql } from "drizzle-orm"
 
 import { tags } from '../schema.js'
 import { TagResponse } from "../../monkeytype.js"
@@ -16,6 +16,7 @@ export type TagObject = {
 export type TagsQueries = {
   createTag: (state: State, id: string, name: string, fullDetails: TagResponse) => Promise<Tag>,
   deleteTags: (state: State) => Promise<void>,
+  deleteTagsNotIn: (state: State, ids: string[]) => Promise<Tag[]>,
   editTagById: (state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) => Promise<Tag>,
   getTagById: (state: State, id: string) => Promise<Tag>,
   getTags: (state: State) => Promise<Array<TagObject>>,
@@ -63,6 +64,12 @@ export async function deleteTags(state: State) {
   await state.db.delete(tags).where(eq(tags.userId, userId))
 }
 
+export async function deleteTagsNotIn(state: State, ids: string[]) {
+  if (!state.config.get("dbURL")) await testConnection(state.db)
+  const userId = String(state.config.get("localId"))
+  return state.db.delete(tags).where(and(eq(tags.userId, userId), notInArray(tags.id, ids))).returning()
+}
+
 export async function editTagById(state: State, id: string, toSet: {name?: string, fullDetails?: TagResponse}) {
   if (!state.config.get("dbURL")) await testConnection(state.db)
   const userId = String(state.config.get("localId"))
@@ -73,6 +80,7 @@ export async function editTagById(state: State, id: string, toSet: {name?: strin
 export default {
   createTag,
   deleteTags,
+  deleteTagsNotIn,
   editTagById,
   getTagById,
   getTags,
