@@ -12,7 +12,32 @@ Part of improving on a skill is being able to track progress. You may not see dr
 
 This tool was built so it becomes easy improve your typing through deliberate practice sessions. Setting a daily goal to do X tests or spend X time on a specific type of test provides structure and accountability.
 
+## Quick Start (Docker Compose)
+
+The fastest way to get running — no Node.js/nvm and no manual Postgres setup required, just [Docker](https://www.docker.com/products/docker-desktop/).
+
+1. Clone the repository and change into the project directory
+2. Run:
+```shell
+docker compose run --build --rm app
+```
+This builds the CLI, starts a Postgres database, applies all database migrations, and then starts the CLI itself — all with one command.
+
+3. When prompted for the database url, enter:
+```shell
+postgres://postgres:postgres@db:5432/postgres
+```
+(`db` is the name Docker Compose gives the Postgres container on its internal network — not `localhost`.)
+
+4. Follow the remaining prompts to connect your [MonkeyType](https://monkeytype.com/) account.
+
+Your database url and MonkeyType login are saved for next time, so future runs of `docker compose run --rm app` will skip straight to the CLI.
+
+If you'd rather not use Docker Compose, see the manual setup below.
+
 ## Pre-Setup
+
+ℹ️ This section (and "Setup" below) describes running the CLI directly on your machine. Skip both if you used the Docker Compose Quick Start above.
 
 ### NodeJS
 This tool requires the following to be setup prior to running the project:
@@ -36,7 +61,7 @@ docker images
 
 3. Run the container in detached mode with a name, environment variables, and publishing container's port(s) to the host using the postgres image:
 ```shell
-docker run -d --name typing_goals_cli --env POSTGRES_PASSWORD=postgres --publish 5432:5432 postgres
+docker run -d --name typing_goals_cli --env POSTGRES_PASSWORD=postgres --publish 5433:5432 postgres
 ```
 
 4. Verify the container created is running by checking that the IMAGE is `postgres` and the CREATED is `X seconds go`:

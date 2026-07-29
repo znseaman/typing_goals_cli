@@ -20,8 +20,9 @@ export async function promptDbURL(config: Conf): Promise<string> {
   if (!dbURL) {
     logger.log(`\nPlease enter your database url from the pre-setup process to use the Typing Goals CLI.\n`)
     try {
-      dbURL = await read({prompt: "Enter database url: ", default: "postgres://postgres:postgres@localhost:5432/postgres", silent: false});
+      dbURL = await read({prompt: "Enter database url: ", default: process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/postgres", silent: false});
       config.set("dbURL", dbURL)
+      logger.success("Successfully set the database url!")
     } catch (error) {
       if ((error as Error).message !== "canceled") {
         logger.error(`An error occurred: ${(error as Error).message}. Please try again.`)

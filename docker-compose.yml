@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+    # No host port published: app/migrate reach this over the internal Compose
+    # network as `db:5432`, and publishing to a fixed host port risks clashing
+    # with any other Postgres already running on the host (e.g. one set up via
+    # the README's manual instructions). For ad hoc host-side psql access, use
+    # `docker compose exec db psql -U postgres` instead of a published port.
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+    command: ["node", "dist/db/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+    environment:
+      # Only pre-fills the CLI's "Enter database url" prompt default (see
+      # promptDbURL in src/db/index.ts) - it still asks for confirmation
+      # rather than skipping the prompt, so hitting Enter is enough to
+      # accept the correct value instead of the `localhost`-based default.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
+    stdin_open: true
+    tty: true
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - app-config:/home/node/.config
+
+volumes:
+  db-data:
+  app-config:
